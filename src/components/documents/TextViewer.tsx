@@ -1,12 +1,13 @@
-// src/components/documents/TextViewer.tsx
+'use client';
+
 type Props = {
-  text: string;
+  src: string;
 };
 
-export default function TextViewer({ text }: Props) {
+export default function TextViewer({ src }: Props) {
   return (
-    <pre className="whitespace-pre-wrap text-sm text-white/90">
-      {text}
+    <pre className="whitespace-pre-wrap text-sm p-4 bg-zinc-950 text-zinc-100 rounded">
+      {src}
     </pre>
   );
 }
