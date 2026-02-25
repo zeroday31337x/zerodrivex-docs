@@ -1,8 +1,9 @@
-import fs from 'fs/promises';
+// src/components/documents/HtmlViewer.tsx
+type Props = {
+  html: string;
+};
 
-export default async function HtmlViewer({ src }: { src: string }) {
-  const html = await fs.readFile(src, 'utf-8');
-
+export default function HtmlViewer({ html }: Props) {
   return (
     <div
       className="prose prose-invert max-w-none"
