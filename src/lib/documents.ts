@@ -39,6 +39,40 @@ export async function getDocumentBySlug(slug: string) {
   };
 }
 
+export async function getPublishedDocuments() {
+  return prisma.document.findMany({
+    where: { published: true },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true, slug: true, title: true, summary: true,
+      type: true, format: true, sourcePath: true, createdAt: true,
+      categories: { select: { category: { select: { name: true, slug: true } } } },
+    },
+  });
+}
+
+export async function getAllDocumentsAdmin() {
+  return prisma.document.findMany({
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true, slug: true, title: true,
+      type: true, format: true, published: true, createdAt: true,
+    },
+  });
+}
+
+export async function getAdminStats() {
+  const [total, byType] = await Promise.all([
+    prisma.document.count(),
+    prisma.document.groupBy({ by: ['type'], _count: { _all: true } }),
+  ]);
+  return { total, byType };
+}
+
+export async function deleteDocument(id: string) {
+  return prisma.document.delete({ where: { id } });
+}
+
 export async function getDocuments(params: {
   q?: string;
   type?: string;

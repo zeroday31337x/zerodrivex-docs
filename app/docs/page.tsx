@@ -23,8 +23,7 @@ export default async function DocsPage({ searchParams }: Props) {
 
   return (
     <ZdxDocsShell
-      title="Documentation Archive"
-      subtitle="Research, whitepapers, and technical documents"
+      headerProps={{ title: "Documentation Archive", subtitle: "Research, whitepapers, and technical documents" }}
     >
       {/* Search */}
       <form className="mb-6">

@@ -25,6 +25,7 @@ export async function POST(req: Request) {
   const title = form.get('title') as string;
   const slug = form.get('slug') as string;
   const type = form.get('type') as DocumentType;
+  const summary = (form.get('summary') as string) || undefined;
 
   if (!file) {
     return new Response('Missing file', { status: 400 });
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     data: {
       slug,
       title,
+      summary,
       type,
       format: inferFormat(file),
       sourcePath: githubPath,

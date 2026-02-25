@@ -14,8 +14,7 @@ export default async function DocPage({
 
   return (
     <ZdxDocsShell
-      title={doc.title}
-      subtitle={doc.category}
+      headerProps={{ title: doc.title, subtitle: doc.category }}
     >
       <UniversalDocViewer
         type={doc.type}

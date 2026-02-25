@@ -5,55 +5,48 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code');
 
   if (!code) {
-    return NextResponse.redirect('/?error=missing_code');
+    return NextResponse.redirect(new URL('/?error=missing_code', req.url));
   }
 
-  // Exchange code for token
-  const tokenRes = await fetch(
-    `${process.env.OAUTH_ISSUER}/oauth/token`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        grant_type: 'authorization_code',
-        client_id: process.env.OAUTH_CLIENT_ID,
-        client_secret: process.env.OAUTH_CLIENT_SECRET,
-        redirect_uri: process.env.OAUTH_REDIRECT_URI,
-        code,
-      }),
-    }
-  );
+  const tokenRes = await fetch(`${process.env.ZDX_OAUTH_ISSUER}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'authorization_code',
+      client_id: process.env.ZDX_OAUTH_CLIENT_ID,
+      client_secret: process.env.ZDX_OAUTH_CLIENT_SECRET,
+      redirect_uri: process.env.ZDX_OAUTH_REDIRECT_URI,
+      code,
+    }),
+  });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect('/?error=auth_failed');
+    return NextResponse.redirect(new URL('/?error=auth_failed', req.url));
   }
 
   const token = await tokenRes.json();
 
-  // OPTIONAL: verify token / fetch user info
-  const userRes = await fetch(
-    `${process.env.OAUTH_ISSUER}/oauth/userinfo`,
-    {
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-      },
-    }
-  );
+  const userRes = await fetch(`${process.env.ZDX_OAUTH_ISSUER}/oauth/userinfo`, {
+    headers: { Authorization: `Bearer ${token.access_token}` },
+  });
+
+  if (!userRes.ok) {
+    return NextResponse.redirect(new URL('/?error=auth_failed', req.url));
+  }
 
   const user = await userRes.json();
 
-  // 🔒 enforce admin-only access
   if (!user.roles?.includes('admin')) {
-    return NextResponse.redirect('/?error=unauthorized');
+    return NextResponse.redirect(new URL('/?error=unauthorized', req.url));
   }
 
-  // Create session cookie (simple, no Redis required)
-  const res = NextResponse.redirect('/admin');
+  const res = NextResponse.redirect(new URL('/admin', req.url));
   res.cookies.set('zdx_admin', token.access_token, {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
+    maxAge: 60 * 60 * 24, // 24h
   });
 
   return res;
