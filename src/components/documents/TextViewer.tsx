@@ -1,13 +1,10 @@
 'use client';
 
-type Props = {
-  src: string;
-};
-
-export default function TextViewer({ src }: Props) {
+export default function HtmlViewer({ src }: { src: string }) {
   return (
-    <pre className="whitespace-pre-wrap text-sm p-4 bg-zinc-950 text-zinc-100 rounded">
-      {src}
-    </pre>
+    <div
+      className="prose prose-invert max-w-none p-4"
+      dangerouslySetInnerHTML={{ __html: src }}
+    />
   );
 }
