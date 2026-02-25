@@ -1,15 +1,12 @@
-import fs from 'fs/promises';
-
+// src/components/documents/TextViewer.tsx
 type Props = {
-  src: string;
+  text: string;
 };
 
-export default async function TextViewer({ src }: Props) {
-  const content = await fs.readFile(src, 'utf-8');
-
+export default function TextViewer({ text }: Props) {
   return (
-    <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed bg-black/40 p-6 rounded-lg border border-white/10">
-      {content}
+    <pre className="whitespace-pre-wrap text-sm text-white/90">
+      {text}
     </pre>
   );
 }
