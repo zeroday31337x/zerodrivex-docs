@@ -4,18 +4,16 @@ import TextViewer from './TextViewer';
 import PdfViewer from './PdfViewer';
 import HtmlViewer from './HtmlViewer';
 
-export type DocType = 'text' | 'pdf' | 'html';
-
 export type DocumentData = {
-  type: DocType;
+  type: 'text' | 'pdf' | 'html';
   src: string;
 };
 
-type Props = {
+export default function DocumentViewer({
+  document,
+}: {
   document: DocumentData;
-};
-
-export default function DocumentViewer({ document }: Props) {
+}) {
   switch (document.type) {
     case 'pdf':
       return <PdfViewer src={document.src} />;
