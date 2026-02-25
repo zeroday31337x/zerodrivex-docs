@@ -1,13 +1,12 @@
-// src/components/documents/HtmlViewer.tsx
 type Props = {
-  html: string;
+  content: string;
 };
 
-export default function HtmlViewer({ html }: Props) {
+export default function HtmlViewer({ content }: Props) {
   return (
     <div
       className="prose prose-invert max-w-none"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: content }}
     />
   );
 }

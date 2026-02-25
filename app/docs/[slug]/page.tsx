@@ -1,34 +1,26 @@
-import { notFound } from 'next/navigation';
-import fs from 'fs/promises';
-import path from 'path';
-
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
 import UniversalDocViewer from '@/components/documents/UniversalDocViewer';
+import { notFound } from 'next/navigation';
+import { getDocumentBySlug } from '@/lib/documents';
 
 export default async function DocPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const docPath = path.join(
-    process.cwd(),
-    'content',
-    `${params.slug}.html`
-  );
+  const doc = await getDocumentBySlug(params.slug);
 
-  let content: string;
-
-  try {
-    content = await fs.readFile(docPath, 'utf-8');
-  } catch {
-    notFound();
-  }
+  if (!doc) notFound();
 
   return (
-    <ZdxDocsShell>
+    <ZdxDocsShell
+      title={doc.title}
+      subtitle={doc.category}
+    >
       <UniversalDocViewer
-        format="HTML"
-        content={content}
+        type={doc.type}
+        src={doc.fileUrl}
+        content={doc.textContent}
       />
     </ZdxDocsShell>
   );

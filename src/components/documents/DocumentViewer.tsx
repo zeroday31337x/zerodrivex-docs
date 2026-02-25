@@ -1,29 +1,31 @@
-'use client';
-
+import { Document } from '@prisma/client';
 import TextViewer from './TextViewer';
 import PdfViewer from './PdfViewer';
 import HtmlViewer from './HtmlViewer';
 
-type DocumentLike = {
-  format: 'pdf' | 'html' | 'text' | 'markdown';
-  src: string;
+type Props = {
+  doc: Document;
 };
 
-export default function DocumentViewer({
-  document,
-}: {
-  document: DocumentLike;
-}) {
-  switch (document.format) {
-    case 'pdf':
-      return <PdfViewer src={document.src} />;
+export default function DocumentViewer({ doc }: Props) {
+  const content = doc.contentText ?? '';
 
-    case 'html':
-      return <HtmlViewer src={document.src} />;
+  switch (doc.format) {
+    case 'TEXT':
+    case 'MARKDOWN':
+      return <TextViewer content={content} />;
 
-    case 'markdown':
-    case 'text':
+    case 'HTML':
+      return <HtmlViewer content={content} />;
+
+    case 'PDF':
+      return <PdfViewer src={doc.sourcePath} />;
+
     default:
-      return <TextViewer src={document.src} />;
+      return (
+        <div className="text-red-400">
+          Unsupported document format: {doc.format}
+        </div>
+      );
   }
 }
