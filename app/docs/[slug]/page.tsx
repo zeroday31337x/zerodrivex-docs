@@ -1,4 +1,4 @@
-import ZdxDocsShell from '@/components/layout/ZdxDocsShell';
+import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
 import UniversalDocViewer from '@/components/documents/UniversalDocViewer';
 import { notFound } from 'next/navigation';
 
