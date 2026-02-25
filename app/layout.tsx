@@ -1,19 +1,26 @@
+// app/layout.tsx
 import './globals.css';
+import type { ReactNode } from 'react';
+import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
 
 export const metadata = {
-  title: 'ZerodriveX Documentation',
-  description: 'Research papers, whitepapers, and specifications',
+  title: 'ZeroDriveX Docs',
+  description: 'Research, whitepapers, and technical documentation',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-background text-foreground">
-        {children}
+      <body>
+        <ZdxDocsShell
+          headerProps={{
+            title: 'ZeroDriveX Documentation',
+            subtitle: 'Research • Whitepapers • Specifications',
+            status: { label: 'Docs', tone: 'info' },
+          }}
+        >
+          {children}
+        </ZdxDocsShell>
       </body>
     </html>
   );
