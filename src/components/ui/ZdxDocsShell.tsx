@@ -2,20 +2,8 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Footer from '@/components/Footer';
-import ZdxHeader from '@/components/ui/ZdxHeader';
-import ZdxBadge from '@/components/ui/ZdxBadge';
 
 export type StatusTone = 'default' | 'success' | 'info' | 'warning' | 'danger';
-
-export type ZdxHeaderProps = {
-  title: string;
-  subtitle?: string;
-  status?: { label: string; tone?: StatusTone };
-  right?: ReactNode;
-  icon?: string | { src?: string; size?: number };
-  iconNode?: ReactNode;
-};
 
 type Props = {
   children: ReactNode;
@@ -23,51 +11,37 @@ type Props = {
   containerClass?: string;
   showFrame?: boolean;
   showQuickLinks?: boolean;
-  headerProps?: ZdxHeaderProps;
-  header?: ReactNode;
-  hud?: ReactNode;
+  title?: string;
+  subtitle?: string;
 };
 
 type RuntimeTheme = {
-  bg?: string;
-  headerBg?: string;
-  tone?: StatusTone;
-  dot?: string;
+  bg: string;
+  headerBg: string;
+  dot: string;
 };
 
-type RuntimePayload = {
-  label?: string;
-  state?: string;
-  theme?: RuntimeTheme;
-};
-
-function fallbackTheme(state?: string): RuntimeTheme {
-  const s = (state || 'online').toLowerCase();
-
-  if (s === 'maintenance') {
-    return {
-      bg: 'bg-yellow-950',
-      headerBg: 'bg-yellow-800/40',
-      tone: 'warning',
-      dot: 'bg-yellow-400',
-    };
+function resolveTheme(state?: string): RuntimeTheme {
+  switch ((state || 'online').toLowerCase()) {
+    case 'maintenance':
+      return {
+        bg: 'bg-yellow-950',
+        headerBg: 'bg-yellow-900/60',
+        dot: 'bg-yellow-400',
+      };
+    case 'offline':
+      return {
+        bg: 'bg-red-950',
+        headerBg: 'bg-red-900/60',
+        dot: 'bg-red-500',
+      };
+    default:
+      return {
+        bg: 'bg-black',
+        headerBg: 'bg-black/70',
+        dot: 'bg-green-400',
+      };
   }
-
-  if (s === 'offline') {
-    return {
-      bg: 'bg-red-950',
-      headerBg: 'bg-red-900/50',
-      tone: 'danger',
-      dot: 'bg-red-500',
-    };
-  }
-
-  return {
-    bg: 'bg-black',
-    headerBg: 'bg-black/60',
-    tone: 'success',
-    dot: 'bg-green-400',
-  };
 }
 
 export default function ZdxDocsShell({
@@ -76,101 +50,60 @@ export default function ZdxDocsShell({
   containerClass = '',
   showFrame = true,
   showQuickLinks = true,
-  headerProps,
-  header,
-  hud,
+  title = 'ZeroDriveX Documentation',
+  subtitle,
 }: Props) {
   const [mounted, setMounted] = useState(false);
-  const [runtime, setRuntime] = useState<RuntimePayload>({
-    label: 'Docs Runtime',
-    state: 'online',
-  });
+  const [runtimeState] = useState<'online' | 'offline' | 'maintenance'>(
+    'online'
+  );
 
   useEffect(() => {
     setMounted(true);
-
-    (async () => {
-      try {
-        const res = await fetch('/api/public/runtime', { credentials: 'omit' });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data?.runtime) setRuntime(data.runtime as RuntimePayload);
-      } catch {
-        // ignore
-      }
-    })();
   }, []);
 
-  const theme = runtime.theme ?? fallbackTheme(runtime.state);
-  const label = runtime.label || 'Docs Runtime';
-
-  const normalizedHeaderProps =
-    headerProps
-      ? {
-          ...headerProps,
-          icon:
-            typeof headerProps.icon === 'string'
-              ? { src: headerProps.icon }
-              : headerProps.icon,
-          status: headerProps.status
-            ? {
-                ...headerProps.status,
-                tone: headerProps.status.tone ?? theme.tone ?? 'success',
-              }
-            : undefined,
-        }
-      : undefined;
+  const theme = resolveTheme(runtimeState);
 
   return (
     <div
-      className={`flex flex-col min-h-[100dvh] w-full text-white overflow-x-hidden transition-colors duration-700 ${
-        theme.bg || 'bg-black'
-      }`}
+      className={`flex flex-col min-h-[100dvh] w-full text-white ${theme.bg}`}
     >
       {/* HEADER */}
       <header
-        className={`sticky top-0 z-40 w-full backdrop-blur-md border-b border-white/10 px-6 lg:px-8 py-3 ${
-          theme.headerBg || 'bg-black/60'
-        }`}
+        className={`sticky top-0 z-40 w-full backdrop-blur-md border-b border-white/10 px-6 lg:px-8 py-3 ${theme.headerBg}`}
       >
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="ml-8 sm:ml-0 font-bold tracking-widest text-primary uppercase text-sm"
+            className="font-bold tracking-widest uppercase text-sm"
           >
             ZeroDriveX Docs
           </Link>
 
-          <div className="h-4 w-px bg-white/10" />
-
-          <div className="hidden sm:flex items-center gap-3">
-            <ZdxBadge tone={theme.tone || 'success'}>
-              <span
-                className={`inline-block w-2 h-2 rounded-full mr-2 animate-pulse ${
-                  theme.dot || 'bg-green-400'
-                }`}
-              />
-              {label}
-            </ZdxBadge>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-white/70">
+            <span
+              className={`inline-block w-2 h-2 rounded-full ${theme.dot}`}
+            />
+            runtime online
           </div>
 
           {showQuickLinks && (
             <nav className="ml-auto flex items-center gap-3 text-sm">
               <Link
                 href="/research"
-                className="px-3 py-1.5 rounded-md font-semibold bg-white/5 hover:bg-white/10 transition"
+                className="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 transition"
               >
                 Research
               </Link>
               <Link
                 href="/whitepapers"
-                className="px-3 py-1.5 rounded-md font-semibold bg-white/5 hover:bg-white/10 transition"
+                className="px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 transition"
               >
                 Whitepapers
               </Link>
               <Link
                 href="/archive"
-                className="px-3 py-1.5 rounded-md font-semibold bg-green-600 hover:bg-green-700 transition"
+                className="px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-700 transition"
               >
                 Archive
               </Link>
@@ -180,18 +113,19 @@ export default function ZdxDocsShell({
       </header>
 
       {/* MAIN */}
-      <main className={`flex-1 px-6 lg:px-8 pt-8 pb-20 ${className}`}>
+      <main
+        className={`flex-1 px-6 lg:px-8 pt-8 pb-20 w-full ${className}`}
+      >
         <div className={`max-w-7xl mx-auto ${containerClass}`}>
-          {normalizedHeaderProps ? (
-            <ZdxHeader {...normalizedHeaderProps} />
-          ) : (
-            header ?? null
-          )}
-
-          {hud && <div className="mt-4 space-y-6">{hud}</div>}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">{title}</h1>
+            {subtitle && (
+              <p className="text-white/60 mt-1">{subtitle}</p>
+            )}
+          </div>
 
           {showFrame ? (
-            <div className="glass-panel p-8 rounded-2xl mt-6">
+            <div className="glass-panel p-8 rounded-2xl">
               {children}
             </div>
           ) : (
@@ -201,12 +135,12 @@ export default function ZdxDocsShell({
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/10 bg-black/80 backdrop-blur-md px-6 lg:px-8 py-6">
-        <Footer />
+      <footer className="border-t border-white/10 bg-black/80 px-6 lg:px-8 py-6 text-center text-xs text-white/50">
+        © {new Date().getFullYear()} ZeroDriveX — Documentation
       </footer>
 
       {!mounted && <style>{`html { visibility: hidden; }`}</style>}
       {mounted && <style>{`html { visibility: visible; }`}</style>}
     </div>
   );
-        }
+}
