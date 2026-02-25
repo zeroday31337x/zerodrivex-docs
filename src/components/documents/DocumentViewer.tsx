@@ -1,30 +1,30 @@
-import { Document } from '@prisma/client';
+'use client';
+
 import TextViewer from './viewers/TextViewer';
 import PdfViewer from './viewers/PdfViewer';
 import HtmlViewer from './viewers/HtmlViewer';
 
-type Props = {
-  doc: Document;
+export type DocType = 'text' | 'pdf' | 'html';
+
+export type DocumentData = {
+  type: DocType;
+  src: string;
 };
 
-export default function DocumentViewer({ doc }: Props) {
-  const mime = doc.mimeType ?? '';
+type Props = {
+  document: DocumentData;
+};
 
-  if (mime.startsWith('text/')) {
-    return <TextViewer src={doc.sourcePath} />;
+export default function DocumentViewer({ document }: Props) {
+  switch (document.type) {
+    case 'pdf':
+      return <PdfViewer src={document.src} />;
+
+    case 'html':
+      return <HtmlViewer src={document.src} />;
+
+    case 'text':
+    default:
+      return <TextViewer src={document.src} />;
   }
-
-  if (mime === 'application/pdf') {
-    return <PdfViewer src={doc.sourcePath} />;
-  }
-
-  if (mime === 'text/html') {
-    return <HtmlViewer src={doc.sourcePath} />;
-  }
-
-  return (
-    <div className="text-red-400">
-      Unsupported document type: {mime}
-    </div>
-  );
 }
