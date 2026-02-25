@@ -1,8 +1,8 @@
 'use client';
 
-import TextViewer from './viewers/TextViewer';
-import PdfViewer from './viewers/PdfViewer';
-import HtmlViewer from './viewers/HtmlViewer';
+import TextViewer from './TextViewer';
+import PdfViewer from './PdfViewer';
+import HtmlViewer from './HtmlViewer';
 
 export type DocType = 'text' | 'pdf' | 'html';
 
