@@ -1,6 +1,6 @@
 // /app/api/auth/oauth/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@lib/db';
+import { prisma } from '@src/lib/prisma';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
