@@ -1,6 +1,6 @@
 // /proxy.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@lib/prisma;
+import { prisma } from '@src/lib/prisma;
 
 export async function proxy(req: NextRequest) {
   // Allow login + callback to pass through
