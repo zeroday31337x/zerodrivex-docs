@@ -2,10 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+
   const code = searchParams.get('code');
+  const state = searchParams.get('state');
+
+  const storedState = req.cookies.get('oauth_state')?.value;
+  const codeVerifier = req.cookies.get('pkce_verifier')?.value;
 
   if (!code) {
     return NextResponse.redirect(new URL('/?error=missing_code', req.url));
+  }
+
+  if (!state || !storedState || state !== storedState) {
+    return NextResponse.redirect(new URL('/?error=invalid_state', req.url));
+  }
+
+  if (!codeVerifier) {
+    return NextResponse.redirect(new URL('/?error=missing_verifier', req.url));
   }
 
   const tokenRes = await fetch(`${process.env.ZDX_OAUTH_ISSUER}/oauth/token`, {
@@ -17,6 +30,7 @@ export async function GET(req: NextRequest) {
       client_secret: process.env.ZDX_OAUTH_CLIENT_SECRET,
       redirect_uri: process.env.ZDX_OAUTH_REDIRECT_URI,
       code,
+      code_verifier: codeVerifier,
     }),
   });
 
@@ -41,12 +55,16 @@ export async function GET(req: NextRequest) {
   }
 
   const res = NextResponse.redirect(new URL('/admin', req.url));
+
+  res.cookies.delete('oauth_state');
+  res.cookies.delete('pkce_verifier');
+
   res.cookies.set('zdx_admin', token.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24, // 24h
+    maxAge: 60 * 60 * 4, // 4h safer than 24h
   });
 
   return res;
