@@ -1,8 +1,9 @@
-// file: /middleware.ts
+// /proxy.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@lib/db';
 
-export function middleware(req: NextRequest) {
-  // Allow login + callback routes
+export async function proxy(req: NextRequest) {
+  // Allow login + callback to pass through
   if (
     req.nextUrl.pathname.startsWith('/api/auth/oauth/login') ||
     req.nextUrl.pathname.startsWith('/api/auth/oauth/callback')
@@ -10,13 +11,16 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = req.cookies.get('zdx_admin')?.value;
-
-  if (!token) {
+  const sessionId = req.cookies.get('docs_session')?.value;
+  if (!sessionId) {
     return NextResponse.redirect(new URL('/api/auth/oauth/login', req.url));
   }
 
-  // Optional: verify token here if you want
+  const session = await prisma.docsSession.findUnique({ where: { id: sessionId } });
+  if (!session || session.expiresAt < new Date()) {
+    return NextResponse.redirect(new URL('/api/auth/oauth/login', req.url));
+  }
+
   return NextResponse.next();
 }
 
