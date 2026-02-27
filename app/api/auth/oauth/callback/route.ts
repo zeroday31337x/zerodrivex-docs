@@ -1,16 +1,14 @@
-// file: /app/api/auth/oauth/callback/route.ts
+// /app/api/auth/oauth/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { prisma } from '@lib/db';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
 
-  if (!code) {
-    return NextResponse.redirect(new URL('/?error=missing_code', req.url));
-  }
+  if (!code) return NextResponse.redirect(new URL('/?error=missing_code', req.url));
 
-  // Exchange code for token
+  // Exchange code for access token
   const tokenRes = await fetch(`${process.env.ZDX_OAUTH_ISSUER}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -38,14 +36,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/?error=unauthorized', req.url));
   }
 
-  // ✅ SET DOCS COOKIE HERE
+  // ✅ Create docs-only session
+  const sessionId = crypto.randomUUID();
+  await prisma.docsSession.create({
+    data: {
+      id: sessionId,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4h
+    },
+  });
+
+  // Set session cookie
   const res = NextResponse.redirect(new URL('/admin', req.url));
-  res.cookies.set('zdx_admin', token.access_token, {
+  res.cookies.set('docs_session', sessionId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // true only in prod with HTTPS
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 4, // 4 hours
+    maxAge: 4 * 60 * 60, // 4h
   });
 
   return res;
