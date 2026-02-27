@@ -1,26 +1,16 @@
+// file: /app/api/auth/oauth/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-
   const code = searchParams.get('code');
-  const state = searchParams.get('state');
-
-  const storedState = req.cookies.get('oauth_state')?.value;
-  const codeVerifier = req.cookies.get('pkce_verifier')?.value;
 
   if (!code) {
     return NextResponse.redirect(new URL('/?error=missing_code', req.url));
   }
 
-  if (!state || !storedState || state !== storedState) {
-    return NextResponse.redirect(new URL('/?error=invalid_state', req.url));
-  }
-
-  if (!codeVerifier) {
-    return NextResponse.redirect(new URL('/?error=missing_verifier', req.url));
-  }
-
+  // Exchange code for token
   const tokenRes = await fetch(`${process.env.ZDX_OAUTH_ISSUER}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -30,41 +20,32 @@ export async function GET(req: NextRequest) {
       client_secret: process.env.ZDX_OAUTH_CLIENT_SECRET,
       redirect_uri: process.env.ZDX_OAUTH_REDIRECT_URI,
       code,
-      code_verifier: codeVerifier,
     }),
   });
 
-  if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL('/?error=auth_failed', req.url));
-  }
-
+  if (!tokenRes.ok) return NextResponse.redirect(new URL('/?error=auth_failed', req.url));
   const token = await tokenRes.json();
 
+  // Fetch user info
   const userRes = await fetch(`${process.env.ZDX_OAUTH_ISSUER}/oauth/userinfo`, {
     headers: { Authorization: `Bearer ${token.access_token}` },
   });
 
-  if (!userRes.ok) {
-    return NextResponse.redirect(new URL('/?error=auth_failed', req.url));
-  }
-
+  if (!userRes.ok) return NextResponse.redirect(new URL('/?error=auth_failed', req.url));
   const user = await userRes.json();
 
   if (!user.roles?.includes('admin')) {
     return NextResponse.redirect(new URL('/?error=unauthorized', req.url));
   }
 
+  // ✅ SET DOCS COOKIE HERE
   const res = NextResponse.redirect(new URL('/admin', req.url));
-
-  res.cookies.delete('oauth_state');
-  res.cookies.delete('pkce_verifier');
-
   res.cookies.set('zdx_admin', token.access_token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // true only in prod with HTTPS
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 4, // 4h safer than 24h
+    maxAge: 60 * 60 * 4, // 4 hours
   });
 
   return res;
