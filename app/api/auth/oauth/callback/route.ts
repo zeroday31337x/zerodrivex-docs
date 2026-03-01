@@ -47,13 +47,14 @@ export async function GET(req: NextRequest) {
 
   // Set session cookie
   const res = NextResponse.redirect(new URL('/admin', req.url));
-  res.cookies.set('zdx_admin', token.access_token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24, // 24h
-  });
+  res.cookies.set('docs_session', token.access_token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+  domain: 'docs.zerodrivex.com',
+  maxAge: 60 * 60 * 24,
+});
 
   return res;
 }
