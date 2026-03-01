@@ -14,15 +14,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL('/api/auth/oauth/login', req.url));
   }
 
-  // Validate session via API instead of Prisma directly
-  const res = await fetch(`${req.nextUrl.origin}/api/auth/session/validate`, {
-    headers: { Cookie: `docs_session=${sessionId}` }
-  });
-
-  if (!res.ok) {
-    return NextResponse.redirect(new URL('/api/auth/oauth/login', req.url));
-  }
-
+  // Just check cookie exists — token validation happens in pages
   return NextResponse.next();
 }
 
