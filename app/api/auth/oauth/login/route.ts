@@ -2,6 +2,10 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+  console.log('CLIENT_ID:', process.env.ZDX_OAUTH_CLIENT_ID);
+  console.log('REDIRECT_URI:', process.env.ZDX_OAUTH_REDIRECT_URI);
+  console.log('ISSUER:', process.env.ZDX_OAUTH_ISSUER);
+  
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: process.env.ZDX_OAUTH_CLIENT_ID!,
