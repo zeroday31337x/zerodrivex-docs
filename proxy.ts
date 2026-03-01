@@ -1,8 +1,7 @@
-// /proxy.ts
+// proxy.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+
 export async function proxy(req: NextRequest) {
-  // Allow login + callback to pass through
   if (
     req.nextUrl.pathname.startsWith('/api/auth/oauth/login') ||
     req.nextUrl.pathname.startsWith('/api/auth/oauth/callback')
@@ -15,8 +14,12 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL('/api/auth/oauth/login', req.url));
   }
 
-  const session = await prisma.docsSession.findUnique({ where: { id: sessionId } });
-  if (!session || session.expiresAt < new Date()) {
+  // Validate session via API instead of Prisma directly
+  const res = await fetch(`${req.nextUrl.origin}/api/auth/session/validate`, {
+    headers: { Cookie: `docs_session=${sessionId}` }
+  });
+
+  if (!res.ok) {
     return NextResponse.redirect(new URL('/api/auth/oauth/login', req.url));
   }
 
