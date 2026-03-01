@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 
 export async function getAdminSession() {
-  const token = (await cookies()).get('zdx_admin')?.value;
+  const token = (await cookies()).get('docs_session')?.value; // ← changed from zdx_admin
   if (!token) return null;
 
   const res = await fetch(`${process.env.ZDX_OAUTH_ISSUER}/oauth/userinfo`, {
