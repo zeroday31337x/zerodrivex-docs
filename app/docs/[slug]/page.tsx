@@ -1,16 +1,21 @@
-import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
-import UniversalDocViewer from '@/components/documents/UniversalDocViewer';
-import { notFound } from 'next/navigation';
-import { getDocumentBySlug } from '@/lib/documents';
+import ZdxDocsShell from '@/components/ui/ZdxDocsShell'
+import UniversalDocViewer from '@/components/documents/UniversalDocViewer'
+import { notFound } from 'next/navigation'
+import { getDocumentBySlug } from '@/lib/documents'
 
 export default async function DocPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>
 }) {
-  const doc = await getDocumentBySlug(params.slug);
 
-  if (!doc) notFound();
+  const { slug } = await params
+
+  const doc = await getDocumentBySlug(slug)
+
+  if (!doc) {
+    notFound()
+  }
 
   return (
     <ZdxDocsShell
@@ -22,5 +27,5 @@ export default async function DocPage({
         content={doc.textContent}
       />
     </ZdxDocsShell>
-  );
+  )
 }

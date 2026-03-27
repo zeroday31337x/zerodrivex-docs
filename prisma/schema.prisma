@@ -29,7 +29,8 @@ model Document {
   summary     String?
   type        DocumentType
   format      DocumentFormat
-
+  image       String?
+  
   // content & storage
   sourcePath  String
   contentText String?

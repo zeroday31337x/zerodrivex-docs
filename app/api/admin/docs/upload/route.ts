@@ -2,19 +2,23 @@
 export const dynamic = 'force-dynamic';
 
 import { prisma } from '@/lib/prisma';
-import { uploadToGithub } from '@/lib/github';
+import { uploadToVPS } from '@/lib/vps-storage';  // ← NEW
 import { extractText } from '@/lib/extract';
 import { DocumentType, DocumentFormat } from '@prisma/client';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { NextResponse } from 'next/server';
 
 function inferFormat(file: File): DocumentFormat {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   const map: Record<string, DocumentFormat> = {
     pdf: DocumentFormat.PDF,
-    docx: DocumentFormat.DOCX, doc: DocumentFormat.DOCX,
-    md: DocumentFormat.MARKDOWN, markdown: DocumentFormat.MARKDOWN,
-    html: DocumentFormat.HTML, htm: DocumentFormat.HTML,
+    docx: DocumentFormat.DOCX,
+    doc: DocumentFormat.DOCX,
+    md: DocumentFormat.MARKDOWN,
+    markdown: DocumentFormat.MARKDOWN,
+    html: DocumentFormat.HTML,
+    htm: DocumentFormat.HTML,
     txt: DocumentFormat.TEXT,
   };
   return map[ext] ?? DocumentFormat.TEXT;
@@ -30,21 +34,19 @@ function inferImageExt(file: File): string {
 }
 
 export async function POST(req: Request) {
-  const form = await req.formData();
+  try {
+    const form = await req.formData();
+    const file = form.get('file') as File;
+    const title = form.get('title') as string;
+    const slug = form.get('slug') as string;
+    const type = form.get('type') as DocumentType;
+    const summary = (form.get('summary') as string) || undefined;
+    const coverImageFile = form.get('coverImage') as File | null;
 
-  const file = form.get('file') as File;
-  const title = form.get('title') as string;
-  const slug = form.get('slug') as string;
-  const type = form.get('type') as DocumentType;
-  const summary = (form.get('summary') as string) || undefined;
-  const coverImageFile = form.get('coverImage') as File | null;
+    console.log('📁 VPS Upload:', { file: file.name, slug, size: file.size });
 
-  if (!file) {
-    return new Response('Missing file', { status: 400 });
-  }
-
-  // 1️⃣ Upload document to GitHub (existing logic unchanged)
-  const githubPath = await uploadToGithub(file, slug);
+  // 1️⃣ Upload document to VPS
+  const githubPath = await uploadToVPS(file, slug);
 
   // 2️⃣ Save cover image to VPS public folder
   let coverImageUrl: string | null = null;
@@ -74,7 +76,7 @@ export async function POST(req: Request) {
       format: inferFormat(file),
       sourcePath: githubPath,
       contentText: text,
-      coverImageUrl,
+      image: coverImageUrl,
       published: true,
       versions: {
         create: {
@@ -86,5 +88,14 @@ export async function POST(req: Request) {
     },
   });
 
-  return Response.redirect('/admin/docs');
+    console.log('✅ Document created and saved to VPS!');
+    return NextResponse.redirect(new URL('/admin/docs', req.url));
+
+  } catch (error) {
+    console.error('❌ Upload failed:', error);
+    return new Response(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+      status: 500
+    });
+  }
 }
+

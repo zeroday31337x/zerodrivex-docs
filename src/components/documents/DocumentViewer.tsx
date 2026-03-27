@@ -4,10 +4,19 @@ import PdfViewer from './PdfViewer';
 import HtmlViewer from './HtmlViewer';
 
 type Props = {
-  doc: Document;
+  doc: Document | null;
 };
 
 export default function DocumentViewer({ doc }: Props) {
+
+  if (!doc) {
+    return (
+      <div className="text-red-400">
+        Document not found.
+      </div>
+    );
+  }
+
   const content = doc.contentText ?? '';
 
   switch (doc.format) {

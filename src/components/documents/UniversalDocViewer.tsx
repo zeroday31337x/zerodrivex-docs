@@ -32,11 +32,15 @@ export default function UniversalDocViewer({
     case 'html':
       return content ? <HtmlViewer content={content} /> : null;
 
-    case 'txt':
-      return content ? <TextViewer content={content} /> : null;
+case 'txt':
+  if (content) return <TextViewer content={content} />;
+  if (src) return <iframe src={src} className="w-full h-[80vh] border border-white/10 rounded-lg" />;
+  return null;    
 
-    case 'md':
-      return content ? <MarkdownViewer content={content} /> : null;
+case 'md':
+  if (content) return <MarkdownViewer content={content} />;
+  if (src) return <iframe src={src} className="w-full h-[80vh] border border-white/10 rounded-lg" />;
+  return null;    
 
     case 'docx':
       return src ? <DocxViewer src={src} /> : null;

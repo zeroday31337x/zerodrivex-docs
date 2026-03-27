@@ -2,9 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Docs-specific global defaults */
+/* ============================
+   ZeroDriveX Gold Theme
+   ============================ */
+
+:root {
+  --zdx-gold-dark: #c8a44c;
+  --zdx-gold: #e6c978;
+  --zdx-gold-light: #f3e2a1;
+}
+
+/* Base page styling */
 html,
 body {
   background-color: #000;
-  color: #fff;
+  color: var(--zdx-gold);
+}
+
+/* ============================
+   Typography
+   ============================ */
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--zdx-gold-dark);
+  font-weight: 700;
+}
+
+p,
+span,
+li,
+td,
+th {
+  color: var(--zdx-gold-light);
+}
+
+/* ============================
+   Links
+   ============================ */
+
+a {
+  color: var(--zdx-gold);
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #ffffff;
+}
+
+/* ============================
+   Cards
+   ============================ */
+
+.card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ============================
+   Selection highlight
+   ============================ */
+
+::selection {
+  background: var(--zdx-gold-dark);
+  color: #000;
 }

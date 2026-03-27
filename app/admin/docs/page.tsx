@@ -1,4 +1,5 @@
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
+import DeleteDocButton from '@/components/ui/DeleteDocButton';
 import { getAllDocumentsAdmin } from '@/lib/documents';
 import Link from 'next/link';
 
@@ -51,22 +52,15 @@ export default async function AdminDocsPage() {
               <td className="py-2.5 text-white/40">{new Date(doc.createdAt).toLocaleDateString()}</td>
               <td className="py-2.5">
                 <div className="flex gap-2">
-                  <Link
-                    href={`/docs/${doc.slug}`}
-                    className="text-xs text-blue-400 hover:underline"
-                  >
-                    View
-                  </Link>
-                  <form action={`/api/admin/docs/delete`} method="POST" className="inline">
-                    <input type="hidden" name="id" value={doc.id} />
-                    <button
-                      type="submit"
-                      className="text-xs text-red-400 hover:underline"
-                      onClick={(e) => { if (!confirm('Delete this document?')) e.preventDefault(); }}
-                    >
-                      Delete
-                    </button>
-                  </form>
+                 <a href={`/docs/${doc.slug}`}
+                 target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-400 hover:underline"
+                >
+               View
+               </a>
+                  <Link href={`/admin/docs/${doc.id}`} className="text-xs text-green-400 hover:underline">Edit</Link>
+                  <DeleteDocButton id={doc.id} />
                 </div>
               </td>
             </tr>

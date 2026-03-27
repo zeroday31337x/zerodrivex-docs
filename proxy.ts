@@ -2,19 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function proxy(req: NextRequest) {
-  if (
-    req.nextUrl.pathname.startsWith('/api/auth/oauth/login') ||
-    req.nextUrl.pathname.startsWith('/api/auth/oauth/callback')
-  ) {
-    return NextResponse.next();
+  const session = req.cookies.get('docs_session')?.value;
+  const adminPassword = process.env.DOCS_ADMIN_PASSWORD;
+
+  if (!session || session !== adminPassword) {
+    return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  const sessionId = req.cookies.get('docs_session')?.value;
-  if (!sessionId) {
-    return NextResponse.redirect(new URL('/api/auth/oauth/login', req.url));
-  }
-
-  // Just check cookie exists — token validation happens in pages
   return NextResponse.next();
 }
 

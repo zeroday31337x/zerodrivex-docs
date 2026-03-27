@@ -27,16 +27,21 @@ export async function getDocumentBySlug(slug: string) {
     },
   });
 
-  if (!doc) return null;
+if (!doc) return null;
 
-  return {
-    title:       doc.title,
-    published:   doc.published,
-    type:        FORMAT_MAP[doc.format],
-    fileUrl:     doc.sourcePath,
-    textContent: doc.contentText ?? undefined,
-    category:    doc.categories.map((c) => c.category.name).join(', ') || 'Documentation',
-  };
+const type = FORMAT_MAP[doc.format] ?? 'txt';
+
+return {
+  title: doc.title,
+  published: doc.published,
+  type,
+  fileUrl: doc.sourcePath ?? '',
+  textContent: doc.contentText ?? '',
+  category:
+    doc.categories.map((c) => c.category.name).join(', ') ||
+    'Documentation',
+};  
+
 }
 
 export async function getPublishedDocuments() {
@@ -44,7 +49,7 @@ export async function getPublishedDocuments() {
     where: { published: true },
     orderBy: { createdAt: 'desc' },
     select: {
-      id: true, slug: true, title: true, summary: true,
+      id: true, slug: true, title: true, image: true,  summary: true,
       type: true, format: true, sourcePath: true, createdAt: true,
       categories: { select: { category: { select: { name: true, slug: true } } } },
     },
@@ -119,6 +124,7 @@ export async function getDocuments(params: {
         id: true,
         slug: true,
         title: true,
+        image: true,
         summary: true,
         type: true,
         format: true,
