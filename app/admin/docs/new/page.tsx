@@ -16,10 +16,9 @@ export default function NewDocPage() {
 
     const res = await fetch('/api/admin/docs/upload', { method: 'POST', body: data });
 
-    if (res.redirected) {
-      window.location.href = res.url;
-    } else if (!res.ok) {
-      alert('Upload failed. Check console.');
+    if (res.redirected) window.location.href = res.url;
+    else {
+      alert('Upload failed.');
       setUploading(false);
     }
   }
@@ -31,59 +30,30 @@ export default function NewDocPage() {
   }
 
   return (
-    <ZdxDocsShell headerProps={{ title: "Upload Document", subtitle: "Add a new document to the archive" }}>
-      <div className="max-w-xl">
+    <ZdxDocsShell headerProps={{ title: 'Upload Document', subtitle: 'Add a new document' }}>
+      <div className="max-w-xl mx-auto">
         <Link href="/admin/docs" className="text-sm text-white/50 hover:text-white mb-6 inline-block">
           ← Back to Documents
         </Link>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium mb-1">Title <span className="text-red-400">*</span></label>
-            <input name="title" required placeholder="Document title" className="w-full px-4 py-2.5 rounded-lg bg-black/40 border border-white/10 focus:border-green-500 focus:outline-none text-sm" />
-          </div>
+          <input name="title" placeholder="Title" required className="w-full p-2 rounded bg-black/40 border border-white/10" />
+          <input name="slug" placeholder="slug" required pattern="[a-z0-9-]+" className="w-full p-2 rounded bg-black/40 border border-white/10 font-mono" />
+          <textarea name="summary" placeholder="Summary" className="w-full p-2 rounded bg-black/40 border border-white/10" />
+          <select name="type" required className="w-full p-2 rounded bg-black/40 border border-white/10">
+            <option value="RESEARCH">Research Paper</option>
+            <option value="WHITEPAPER">Whitepaper</option>
+            <option value="PRODUCT">Product Doc</option>
+            <option value="BLOG">Blog Post</option>
+            <option value="INTERNAL">Internal</option>
+          </select>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Slug <span className="text-red-400">*</span></label>
-            <input name="slug" required placeholder="document-slug" pattern="[a-z0-9-]+" className="w-full px-4 py-2.5 rounded-lg bg-black/40 border border-white/10 focus:border-green-500 focus:outline-none text-sm font-mono" />
-            <p className="text-xs text-white/40 mt-1">Lowercase letters, numbers, hyphens only.</p>
-          </div>
+          <input type="file" name="file" required accept=".pdf,.docx,.doc,.md,.html,.txt" />
+          <input type="file" name="coverImage" accept="image/*" onChange={handleImageChange} />
+          {preview && <img src={preview} className="mt-2 max-h-40 w-full object-cover rounded" />}
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Summary</label>
-            <textarea name="summary" rows={3} placeholder="Brief description…" className="w-full px-4 py-2.5 rounded-lg bg-black/40 border border-white/10 focus:border-green-500 focus:outline-none text-sm resize-none" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Type <span className="text-red-400">*</span></label>
-            <select name="type" required className="w-full px-4 py-2.5 rounded-lg bg-black/40 border border-white/10 focus:border-green-500 focus:outline-none text-sm">
-              <option value="RESEARCH">Research Paper</option>
-              <option value="WHITEPAPER">Whitepaper</option>
-              <option value="PRODUCT">Product Doc</option>
-              <option value="BLOG">Blog Post</option>
-              <option value="INTERNAL">Internal</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">File <span className="text-red-400">*</span></label>
-            <input type="file" name="file" required accept=".pdf,.docx,.doc,.md,.html,.txt" className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-sm file:font-semibold hover:file:bg-white/20 file:cursor-pointer" />
-            <p className="text-xs text-white/40 mt-1">Accepted: PDF, DOCX, Markdown, HTML, TXT</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Cover Image</label>
-            <input type="file" name="coverImage" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-sm file:font-semibold hover:file:bg-white/20 file:cursor-pointer" />
-            <p className="text-xs text-white/40 mt-1">Optional. JPG, PNG, or WebP.</p>
-            {preview && (
-              <div className="mt-3">
-                <img src={preview} alt="Cover preview" className="rounded-lg border border-white/10 max-h-40 object-cover w-full" />
-              </div>
-            )}
-          </div>
-
-          <button type="submit" disabled={uploading} className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold transition">
-            {uploading ? 'Uploading…' : 'Upload Document'}
+          <button type="submit" disabled={uploading} className="w-full py-2 bg-green-600 rounded">
+            {uploading ? 'Uploading…' : 'Upload'}
           </button>
         </form>
       </div>
