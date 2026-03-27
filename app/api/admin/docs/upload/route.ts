@@ -1,93 +1,49 @@
-export const dynamic = 'force-dynamic';
-
-import { prisma } from '@/lib/prisma';
-import { uploadToVPS } from '@/lib/vps-storage';
-import { extractText } from '@/lib/extract';
-import { DocumentType, DocumentFormat } from '@prisma/client';
-import { writeFile, mkdir } from 'fs/promises';
+import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
 import path from 'path';
-import { NextResponse } from 'next/server';
+import formidable from 'formidable';
+import { prisma } from '@/lib/prisma';
 
-function inferFormat(file: File): DocumentFormat {
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-  const map: Record<string, DocumentFormat> = {
-    pdf: DocumentFormat.PDF,
-    docx: DocumentFormat.DOCX,
-    doc: DocumentFormat.DOCX,
-    md: DocumentFormat.MARKDOWN,
-    markdown: DocumentFormat.MARKDOWN,
-    html: DocumentFormat.HTML,
-    htm: DocumentFormat.HTML,
-    txt: DocumentFormat.TEXT,
-  };
-  return map[ext] ?? DocumentFormat.TEXT;
-}
+export const config = { api: { bodyParser: false } };
 
-function inferImageExt(file: File): string {
-  const map: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-  };
-  return map[file.type] ?? 'jpg';
-}
+export async function POST(req: NextRequest) {
+  const form = new formidable.IncomingForm();
+  const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers');
+  fs.mkdirSync(uploadDir, { recursive: true });
 
-async function verifyAdmin(req: Request) {
-  const auth = req.headers.get('authorization') || '';
-  const token = auth.replace('Bearer ', '');
-  if (token !== process.env.ADMIN_API_KEY) throw new Error('Unauthorized');
-}
-
-export async function POST(req: Request) {
-  try {
-    await verifyAdmin(req);
-
-    const form = await req.formData();
-    const file = form.get('file') as File;
-    const title = form.get('title') as string;
-    const slug = form.get('slug') as string;
-    const type = form.get('type') as DocumentType;
-    const summary = (form.get('summary') as string) || undefined;
-    const coverImageFile = form.get('coverImage') as File | null;
-
-    // Upload document
-    const githubPath = await uploadToVPS(file, slug);
-
-    // Upload cover image safely
-    let coverImageUrl: string | null = null;
-    if (coverImageFile && coverImageFile.size > 0) {
-      const ext = inferImageExt(coverImageFile);
-      if (!['jpg','png','webp'].includes(ext)) throw new Error('Invalid image type');
-      const filename = `${slug}-cover.${ext}`;
-      const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers');
-      await mkdir(uploadDir, { recursive: true });
-      const buffer = Buffer.from(await coverImageFile.arrayBuffer());
-      await writeFile(path.join(uploadDir, filename), buffer);
-      coverImageUrl = `/images/covers/${filename}`;
-    }
-
-    // Extract text
-    const text = await extractText(file);
-
-    // Save to DB
-    await prisma.document.create({
-      data: {
-        slug,
-        title,
-        summary,
-        type,
-        format: inferFormat(file),
-        sourcePath: githubPath,
-        contentText: text,
-        image: coverImageUrl,
-        published: true,
-        versions: { create: { version: 1, sourcePath: githubPath, contentText: text } },
-      },
+  const data: any = await new Promise((resolve, reject) => {
+    form.parse(req, (err, fields, files) => {
+      if (err) reject(err);
+      else resolve({ fields, files });
     });
+  });
 
-    return NextResponse.redirect(new URL('/admin/docs', req.url));
-  } catch (error) {
-    console.error('Upload failed:', error);
-    return new Response(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
+  const { title, slug, summary, type } = data.fields;
+  const file = data.files.file;
+  const cover = data.files.coverImage;
+
+  let coverUrl = null;
+  if (cover && cover[0]) {
+    const fileExt = path.extname(cover[0].originalFilename || '');
+    const filename = `${Date.now()}-${slug}${fileExt}`;
+    const filepath = path.join(uploadDir, filename);
+    fs.copyFileSync(cover[0].filepath, filepath);
+    coverUrl = `/images/covers/${filename}`;
   }
+
+  // Save document
+  const doc = await prisma.document.create({
+    data: {
+      title,
+      slug,
+      summary,
+      type,
+      format: path.extname(file[0].originalFilename || '').slice(1).toUpperCase(),
+      sourcePath: `/images/covers/${file[0].originalFilename}`, // optionally move file too
+      image: coverUrl,
+      published: false,
+    },
+  });
+
+  return NextResponse.redirect(`/admin/docs/${doc.id}`);
 }
