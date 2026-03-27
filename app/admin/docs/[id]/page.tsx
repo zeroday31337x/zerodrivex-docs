@@ -1,15 +1,10 @@
-// app/admin/docs/[id]/page.tsx
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function EditDocPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+export default async function EditDocPage({ params }: { params: { id: string } }) {
+  const { id } = params;
 
   const doc = await prisma.document.findUnique({ where: { id } });
   if (!doc) notFound();
@@ -29,6 +24,7 @@ export default async function EditDocPage({
         >
           <input type="hidden" name="id" value={doc.id} />
 
+          {/* Title */}
           <div>
             <label className="block text-sm font-medium mb-1">Title <span className="text-red-400">*</span></label>
             <input
@@ -39,6 +35,7 @@ export default async function EditDocPage({
             />
           </div>
 
+          {/* Slug */}
           <div>
             <label className="block text-sm font-medium mb-1">Slug</label>
             <input
@@ -50,6 +47,7 @@ export default async function EditDocPage({
             <p className="text-xs text-white/40 mt-1">Lowercase letters, numbers, hyphens only.</p>
           </div>
 
+          {/* Summary */}
           <div>
             <label className="block text-sm font-medium mb-1">Summary</label>
             <textarea
@@ -60,6 +58,7 @@ export default async function EditDocPage({
             />
           </div>
 
+          {/* Type */}
           <div>
             <label className="block text-sm font-medium mb-1">Type <span className="text-red-400">*</span></label>
             <select
@@ -75,6 +74,7 @@ export default async function EditDocPage({
             </select>
           </div>
 
+          {/* Cover Image */}
           <div>
             <label className="block text-sm font-medium mb-1">Cover Image</label>
             {doc.image && (
@@ -96,6 +96,7 @@ export default async function EditDocPage({
             <p className="text-xs text-white/40 mt-1">Optional. JPG, PNG, or WebP.</p>
           </div>
 
+          {/* Published */}
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
