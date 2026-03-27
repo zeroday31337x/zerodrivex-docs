@@ -1,62 +1,159 @@
 'use client';
 
-import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
-import Link from 'next/link';
-import { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function NewDocPage() {
-  const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
+export default function UploadDocPage() {
+  const router = useRouter();
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const [title, setTitle] = useState('');
+  const [type, setType] = useState('RESEARCH');
+  const [format, setFormat] = useState('PDF');
+  const [summary, setSummary] = useState('');
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files) return;
+    const file = e.target.files[0];
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  }
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files) return;
+    setFile(e.target.files[0]);
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setUploading(true);
-    const form = e.currentTarget;
-    const data = new FormData(form);
+    if (!title || !file) return alert('Title and file are required');
 
-    const res = await fetch('/api/admin/docs/upload', { method: 'POST', body: data });
+    setSubmitting(true);
 
-    if (res.redirected) window.location.href = res.url;
-    else {
-      alert('Upload failed.');
-      setUploading(false);
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('type', type);
+    formData.append('format', format);
+    formData.append('summary', summary);
+    if (image) formData.append('image', image);
+    formData.append('file', file);
+
+    const res = await fetch('/api/admin/docs/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (res.ok) {
+      router.push('/admin/docs');
+    } else {
+      alert('Failed to upload document');
+      setSubmitting(false);
     }
   }
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) setPreview(URL.createObjectURL(file));
-    else setPreview(null);
-  }
-
   return (
-    <ZdxDocsShell headerProps={{ title: 'Upload Document', subtitle: 'Add a new document' }}>
-      <div className="max-w-xl mx-auto">
-        <Link href="/admin/docs" className="text-sm text-white/50 hover:text-white mb-6 inline-block">
-          ← Back to Documents
-        </Link>
+    <div className="max-w-3xl mx-auto p-6 sm:p-10">
+      <h1 className="text-3xl font-bold text-yellow-400 mb-6">Upload New Document</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <input name="title" placeholder="Title" required className="w-full p-2 rounded bg-black/40 border border-white/10" />
-          <input name="slug" placeholder="slug" required pattern="[a-z0-9-]+" className="w-full p-2 rounded bg-black/40 border border-white/10 font-mono" />
-          <textarea name="summary" placeholder="Summary" className="w-full p-2 rounded bg-black/40 border border-white/10" />
-          <select name="type" required className="w-full p-2 rounded bg-black/40 border border-white/10">
-            <option value="RESEARCH">Research Paper</option>
-            <option value="WHITEPAPER">Whitepaper</option>
-            <option value="PRODUCT">Product Doc</option>
-            <option value="BLOG">Blog Post</option>
-            <option value="INTERNAL">Internal</option>
-          </select>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-semibold mb-1">Title</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-400"
+            required
+          />
+        </div>
 
-          <input type="file" name="file" required accept=".pdf,.docx,.doc,.md,.html,.txt" />
-          <input type="file" name="coverImage" accept="image/*" onChange={handleImageChange} />
-          {preview && <img src={preview} className="mt-2 max-h-40 w-full object-cover rounded" />}
+        {/* Type & Format */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold mb-1">Type</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="RESEARCH">RESEARCH</option>
+              <option value="WHITEPAPER">WHITEPAPER</option>
+              <option value="PRODUCT">PRODUCT</option>
+              <option value="BLOG">BLOG</option>
+              <option value="INTERNAL">INTERNAL</option>
+            </select>
+          </div>
 
-          <button type="submit" disabled={uploading} className="w-full py-2 bg-green-600 rounded">
-            {uploading ? 'Uploading…' : 'Upload'}
-          </button>
-        </form>
-      </div>
-    </ZdxDocsShell>
+          <div>
+            <label className="block text-sm font-semibold mb-1">Format</label>
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="PDF">PDF</option>
+              <option value="DOCX">DOCX</option>
+              <option value="MARKDOWN">MARKDOWN</option>
+              <option value="HTML">HTML</option>
+              <option value="TEXT">TEXT</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div>
+          <label className="block text-sm font-semibold mb-1">Summary (optional)</label>
+          <textarea
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-green-400"
+            rows={3}
+          />
+        </div>
+
+        {/* Cover Image */}
+        <div>
+          <label className="block text-sm font-semibold mb-1">Cover Image (optional)</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="text-white"
+          />
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="mt-3 w-full h-48 object-cover rounded-lg border border-white/20"
+            />
+          )}
+        </div>
+
+        {/* Document File */}
+        <div>
+          <label className="block text-sm font-semibold mb-1">Document File</label>
+          <input
+            type="file"
+            accept=".pdf,.docx,.md,.html,.txt"
+            onChange={handleFileChange}
+            className="text-white"
+            required
+          />
+        </div>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="px-5 py-2.5 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-bold transition disabled:opacity-50"
+        >
+          {submitting ? 'Uploading...' : '+ Upload Document'}
+        </button>
+      </form>
+    </div>
   );
 }
