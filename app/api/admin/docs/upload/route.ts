@@ -1,63 +1,60 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
 import fs from 'fs';
-import { v4 as uuid } from 'uuid';
+import path from 'path';
+import formidable from 'formidable';
 
-export const runtime = 'nodejs';
+export const config = {
+  api: { bodyParser: false },
+};
 
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
+  const form = new formidable.IncomingForm();
+  const uploadDir = path.join(process.cwd(), 'public/images/covers');
 
-  const title = formData.get('title')?.toString();
-  const slug = formData.get('slug')?.toString();
-  const summary = formData.get('summary')?.toString() || '';
-  const type = formData.get('type')?.toString() as
-    | 'RESEARCH'
-    | 'WHITEPAPER'
-    | 'PRODUCT'
-    | 'BLOG'
-    | 'INTERNAL';
-  const file = formData.get('file') as File;
-  const cover = formData.get('coverImage') as File | null;
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  if (!title || !slug || !type || !file) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-  }
+  return new Promise((resolve, reject) => {
+    form.parse(req as any, async (err, fields, files) => {
+      if (err) return reject(err);
 
-  // Save main document
-  const ext = path.extname(file.name);
-  const filename = `${uuid()}${ext}`;
-  const docDir = path.join(process.cwd(), 'public', 'docs');
-  if (!fs.existsSync(docDir)) fs.mkdirSync(docDir, { recursive: true });
-  const filePath = path.join(docDir, filename);
-  const arrayBuffer = await file.arrayBuffer();
-  fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+      const title = fields.title as string;
+      const type = fields.type as string;
+      const format = fields.format as string;
+      const summary = fields.summary as string;
 
-  let imageUrl: string | null = null;
-  if (cover && cover.size > 0) {
-    const coverExt = path.extname(cover.name);
-    const coverName = `${uuid()}${coverExt}`;
-    const coverDir = path.join(process.cwd(), 'public', 'images', 'covers');
-    if (!fs.existsSync(coverDir)) fs.mkdirSync(coverDir, { recursive: true });
-    const coverPath = path.join(coverDir, coverName);
-    const coverBuffer = Buffer.from(await cover.arrayBuffer());
-    fs.writeFileSync(coverPath, coverBuffer);
-    imageUrl = `/images/covers/${coverName}`;
-  }
+      let imagePath: string | null = null;
+      if (files.image) {
+        const file = Array.isArray(files.image) ? files.image[0] : files.image;
+        const fileName = `${Date.now()}_${file.originalFilename}`;
+        const dest = path.join(uploadDir, fileName);
+        fs.renameSync(file.filepath, dest);
+        imagePath = `/images/covers/${fileName}`;
+      }
 
-  const doc = await prisma.document.create({
-    data: {
-      title,
-      slug,
-      summary,
-      type,
-      format: ext.replace('.', '').toUpperCase(),
-      sourcePath: `/docs/${filename}`,
-      image: imageUrl,
-      published: false,
-    },
+      let sourcePath: string | null = null;
+      if (files.file) {
+        const file = Array.isArray(files.file) ? files.file[0] : files.file;
+        const fileName = `${Date.now()}_${file.originalFilename}`;
+        const dest = path.join(process.cwd(), 'public/documents', fileName);
+        if (!fs.existsSync(path.dirname(dest))) fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.renameSync(file.filepath, dest);
+        sourcePath = `/documents/${fileName}`;
+      }
+
+      const doc = await prisma.document.create({
+        data: {
+          title,
+          type,
+          format,
+          summary,
+          image: imagePath,
+          sourcePath: sourcePath || '',
+          published: false,
+        },
+      });
+
+      resolve(NextResponse.json(doc));
+    });
   });
-
-  return NextResponse.redirect(`/admin/docs/${doc.id}`);
 }
