@@ -1,8 +1,18 @@
-import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+
 import { prisma } from '@/lib/prisma';
-import { DocumentType } from '@prisma/client';
+import { uploadToVPS } from '@/lib/vps-storage';
+import { extractText } from '@/lib/extract';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { NextResponse } from 'next/server';
+
+async function ensureAdmin(req: Request) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || authHeader !== `Bearer ${process.env.ADMIN_API_KEY}`) {
+    throw new Error('Unauthorized');
+  }
+}
 
 function inferImageExt(file: File): string {
   const map: Record<string, string> = {
@@ -14,39 +24,37 @@ function inferImageExt(file: File): string {
 }
 
 export async function POST(req: Request) {
-  const form = await req.formData();
+  try {
+    await ensureAdmin(req);
 
-  const id = form.get('id') as string;
-  const title = form.get('title') as string;
-  const slug = form.get('slug') as string | null;
-  const summary = form.get('summary') as string;
-  const type = form.get('type') as DocumentType;
-  const published = form.get('published') === 'on';
-  const coverImageFile = form.get('coverImage') as File | null;
+    const form = await req.formData();
+    const id = form.get('id') as string;
+    const title = form.get('title') as string;
+    const slug = form.get('slug') as string;
+    const type = form.get('type') as string;
+    const summary = (form.get('summary') as string) || undefined;
+    const published = form.get('published') === 'on';
+    const coverImageFile = form.get('coverImage') as File | null;
 
-  let image: string | undefined = undefined;
+    const updateData: any = { title, slug, type, summary, published };
 
-  if (coverImageFile && coverImageFile.size > 0) {
-    const ext = inferImageExt(coverImageFile);
-    const filename = `${id}-cover.${ext}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers');
-    await mkdir(uploadDir, { recursive: true });
-    const buffer = Buffer.from(await coverImageFile.arrayBuffer());
-    await writeFile(path.join(uploadDir, filename), buffer);
-    image = `/images/covers/${filename}`;
+    if (coverImageFile && coverImageFile.size > 0) {
+      const ext = inferImageExt(coverImageFile);
+      const filename = `${slug}-cover.${ext}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers');
+      await mkdir(uploadDir, { recursive: true });
+
+      const buffer = Buffer.from(await coverImageFile.arrayBuffer());
+      await writeFile(path.join(uploadDir, filename), buffer);
+
+      updateData.image = `/images/covers/${filename}`;
+    }
+
+    await prisma.document.update({ where: { id }, data: updateData });
+
+    return NextResponse.redirect(new URL('/admin/docs', req.url));
+  } catch (error) {
+    console.error('Update failed:', error);
+    return new Response(`Update failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
   }
-
-  await prisma.document.update({
-    where: { id },
-    data: {
-      title,
-      ...(slug && { slug }),
-      summary,
-      type,
-      published,
-      ...(image !== undefined && { image }),
-    },
-  });
-
-  return NextResponse.redirect(new URL('/admin/docs', req.url));
 }
