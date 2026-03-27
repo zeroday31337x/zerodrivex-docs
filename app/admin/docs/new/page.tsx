@@ -1,3 +1,4 @@
+
 'use client';
 
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
@@ -6,6 +7,7 @@ import { useState } from 'react';
 
 export default function NewDocPage() {
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -20,6 +22,16 @@ export default function NewDocPage() {
     } else if (!res.ok) {
       alert('Upload failed. Check console.');
       setUploading(false);
+    }
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreview(url);
+    } else {
+      setPreview(null);
     }
   }
 
@@ -88,6 +100,27 @@ export default function NewDocPage() {
               className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-sm file:font-semibold hover:file:bg-white/20 file:cursor-pointer"
             />
             <p className="text-xs text-white/40 mt-1">Accepted: PDF, DOCX, Markdown, HTML, TXT</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Cover Image</label>
+            <input
+              type="file"
+              name="coverImage"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageChange}
+              className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-sm file:font-semibold hover:file:bg-white/20 file:cursor-pointer"
+            />
+            <p className="text-xs text-white/40 mt-1">Optional. JPG, PNG, or WebP. Shown on doc cards.</p>
+            {preview && (
+              <div className="mt-3">
+                <img
+                  src={preview}
+                  alt="Cover preview"
+                  className="rounded-lg border border-white/10 max-h-40 object-cover w-full"
+                />
+              </div>
+            )}
           </div>
 
           <button
