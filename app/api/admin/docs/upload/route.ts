@@ -1,13 +1,16 @@
-// app/api/admin/docs/upload/route.ts
-export const dynamic = 'force-dynamic';
-
 import { prisma } from '@/lib/prisma';
-import { uploadToVPS } from '@/lib/vps-storage';  // ← NEW
+import { uploadDocument, uploadCoverImage } from '@/lib/vps-storage';
 import { extractText } from '@/lib/extract';
 import { DocumentType, DocumentFormat } from '@prisma/client';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { NextResponse } from 'next/server';
+
+// Dummy server-side admin check
+async function requireAdmin(req: Request) {
+  // Replace this with your real auth logic
+  const user = { isAdmin: true }; // Example
+  if (!user?.isAdmin) throw new Error('Unauthorized');
+  return user;
+}
 
 function inferFormat(file: File): DocumentFormat {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -24,78 +27,53 @@ function inferFormat(file: File): DocumentFormat {
   return map[ext] ?? DocumentFormat.TEXT;
 }
 
-function inferImageExt(file: File): string {
-  const map: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
-  };
-  return map[file.type] ?? 'jpg';
-}
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    await requireAdmin(req);
+
     const form = await req.formData();
     const file = form.get('file') as File;
-    const title = form.get('title') as string;
+    const coverFile = form.get('coverImage') as File | null;
     const slug = form.get('slug') as string;
+    const title = form.get('title') as string;
     const type = form.get('type') as DocumentType;
     const summary = (form.get('summary') as string) || undefined;
-    const coverImageFile = form.get('coverImage') as File | null;
 
-    console.log('📁 VPS Upload:', { file: file.name, slug, size: file.size });
+    // Upload document
+    const docFilename = await uploadDocument(file);
+    const docPath = `/api/admin/files/docs/${docFilename}`;
 
-  // 1️⃣ Upload document to VPS
-  const githubPath = await uploadToVPS(file, slug);
+    // Upload cover image
+    let coverPath: string | null = null;
+    if (coverFile && coverFile.size > 0) {
+      const coverFilename = await uploadCoverImage(coverFile);
+      coverPath = `/api/admin/files/covers/${coverFilename}`;
+    }
 
-  // 2️⃣ Save cover image to VPS public folder
-  let coverImageUrl: string | null = null;
-  if (coverImageFile && coverImageFile.size > 0) {
-    const ext = inferImageExt(coverImageFile);
-    const filename = `${slug}-cover.${ext}`;
-    const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers');
+    // Extract text
+    const text = await extractText(file);
 
-    await mkdir(uploadDir, { recursive: true });
-
-    const buffer = Buffer.from(await coverImageFile.arrayBuffer());
-    await writeFile(path.join(uploadDir, filename), buffer);
-
-    coverImageUrl = `/images/covers/${filename}`;
-  }
-
-  // 3️⃣ Extract text
-  const text = await extractText(file);
-
-  // 4️⃣ Create DB record
-  await prisma.document.create({
-    data: {
-      slug,
-      title,
-      summary,
-      type,
-      format: inferFormat(file),
-      sourcePath: githubPath,
-      contentText: text,
-      image: coverImageUrl,
-      published: true,
-      versions: {
-        create: {
-          version: 1,
-          sourcePath: githubPath,
-          contentText: text,
-        },
+    // Save to DB
+    await prisma.document.create({
+      data: {
+        slug,
+        title,
+        summary,
+        type,
+        format: inferFormat(file),
+        sourcePath: docPath,
+        contentText: text,
+        image: coverPath,
+        published: true,
+        versions: { create: { version: 1, sourcePath: docPath, contentText: text } },
       },
-    },
-  });
-
-    console.log('✅ Document created and saved to VPS!');
-    return NextResponse.redirect(new URL('/admin/docs', req.url));
-
-  } catch (error) {
-    console.error('❌ Upload failed:', error);
-    return new Response(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-      status: 500
     });
+
+    return NextResponse.redirect(new URL('/admin/docs', req.url));
+  } catch (err: any) {
+    console.error('❌ Upload failed:', err);
+    return new Response(err.message || 'Upload failed', { status: 500 });
   }
 }
-
