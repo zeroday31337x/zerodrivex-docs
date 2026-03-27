@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { uploadToGithub } from '@/lib/github';
 import { extractText } from '@/lib/extract';
 import { DocumentType, DocumentFormat } from '@prisma/client';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 
 function inferFormat(file: File): DocumentFormat {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -18,6 +20,15 @@ function inferFormat(file: File): DocumentFormat {
   return map[ext] ?? DocumentFormat.TEXT;
 }
 
+function inferImageExt(file: File): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+  };
+  return map[file.type] ?? 'jpg';
+}
+
 export async function POST(req: Request) {
   const form = await req.formData();
 
@@ -26,18 +37,34 @@ export async function POST(req: Request) {
   const slug = form.get('slug') as string;
   const type = form.get('type') as DocumentType;
   const summary = (form.get('summary') as string) || undefined;
+  const coverImageFile = form.get('coverImage') as File | null;
 
   if (!file) {
     return new Response('Missing file', { status: 400 });
   }
 
-  // 1️⃣ Upload to GitHub
+  // 1️⃣ Upload document to GitHub (existing logic unchanged)
   const githubPath = await uploadToGithub(file, slug);
 
-  // 2️⃣ Extract text (PDF / DOCX / etc)
+  // 2️⃣ Save cover image to VPS public folder
+  let coverImageUrl: string | null = null;
+  if (coverImageFile && coverImageFile.size > 0) {
+    const ext = inferImageExt(coverImageFile);
+    const filename = `${slug}-cover.${ext}`;
+    const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers');
+
+    await mkdir(uploadDir, { recursive: true });
+
+    const buffer = Buffer.from(await coverImageFile.arrayBuffer());
+    await writeFile(path.join(uploadDir, filename), buffer);
+
+    coverImageUrl = `/images/covers/${filename}`;
+  }
+
+  // 3️⃣ Extract text
   const text = await extractText(file);
 
-  // 3️⃣ Create DB records
+  // 4️⃣ Create DB record
   await prisma.document.create({
     data: {
       slug,
@@ -47,6 +74,7 @@ export async function POST(req: Request) {
       format: inferFormat(file),
       sourcePath: githubPath,
       contentText: text,
+      coverImageUrl,
       published: true,
       versions: {
         create: {
