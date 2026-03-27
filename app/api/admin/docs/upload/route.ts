@@ -8,7 +8,6 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { NextResponse } from 'next/server';
 
-// Infer document format from filename
 function inferFormat(file: File): DocumentFormat {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   const map: Record<string, DocumentFormat> = {
@@ -33,17 +32,15 @@ function inferImageExt(file: File): string {
   return map[file.type] ?? 'jpg';
 }
 
-// Admin-only guard
-async function ensureAdmin(req: Request) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || authHeader !== `Bearer ${process.env.ADMIN_API_KEY}`) {
-    throw new Error('Unauthorized');
-  }
+async function verifyAdmin(req: Request) {
+  const auth = req.headers.get('authorization') || '';
+  const token = auth.replace('Bearer ', '');
+  if (token !== process.env.ADMIN_API_KEY) throw new Error('Unauthorized');
 }
 
 export async function POST(req: Request) {
   try {
-    await ensureAdmin(req);
+    await verifyAdmin(req);
 
     const form = await req.formData();
     const file = form.get('file') as File;
@@ -54,19 +51,18 @@ export async function POST(req: Request) {
     const coverImageFile = form.get('coverImage') as File | null;
 
     // Upload document
-    const docPath = await uploadToVPS(file, slug);
+    const githubPath = await uploadToVPS(file, slug);
 
-    // Upload cover image
+    // Upload cover image safely
     let coverImageUrl: string | null = null;
     if (coverImageFile && coverImageFile.size > 0) {
       const ext = inferImageExt(coverImageFile);
+      if (!['jpg','png','webp'].includes(ext)) throw new Error('Invalid image type');
       const filename = `${slug}-cover.${ext}`;
       const uploadDir = path.join(process.cwd(), 'public', 'images', 'covers');
       await mkdir(uploadDir, { recursive: true });
-
       const buffer = Buffer.from(await coverImageFile.arrayBuffer());
       await writeFile(path.join(uploadDir, filename), buffer);
-
       coverImageUrl = `/images/covers/${filename}`;
     }
 
@@ -81,13 +77,11 @@ export async function POST(req: Request) {
         summary,
         type,
         format: inferFormat(file),
-        sourcePath: docPath,
+        sourcePath: githubPath,
         contentText: text,
         image: coverImageUrl,
         published: true,
-        versions: {
-          create: { version: 1, sourcePath: docPath, contentText: text },
-        },
+        versions: { create: { version: 1, sourcePath: githubPath, contentText: text } },
       },
     });
 
