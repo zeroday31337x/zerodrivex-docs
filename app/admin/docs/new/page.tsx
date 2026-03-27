@@ -1,4 +1,3 @@
-
 'use client';
 
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
@@ -43,6 +42,7 @@ export default function NewDocPage() {
         </Link>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Title */}
           <div>
             <label className="block text-sm font-medium mb-1">Title <span className="text-red-400">*</span></label>
             <input
@@ -53,6 +53,7 @@ export default function NewDocPage() {
             />
           </div>
 
+          {/* Slug */}
           <div>
             <label className="block text-sm font-medium mb-1">Slug <span className="text-red-400">*</span></label>
             <input
@@ -65,6 +66,7 @@ export default function NewDocPage() {
             <p className="text-xs text-white/40 mt-1">Lowercase letters, numbers, hyphens only.</p>
           </div>
 
+          {/* Summary */}
           <div>
             <label className="block text-sm font-medium mb-1">Summary</label>
             <textarea
@@ -75,6 +77,7 @@ export default function NewDocPage() {
             />
           </div>
 
+          {/* Type */}
           <div>
             <label className="block text-sm font-medium mb-1">Type <span className="text-red-400">*</span></label>
             <select
@@ -90,6 +93,7 @@ export default function NewDocPage() {
             </select>
           </div>
 
+          {/* Document File */}
           <div>
             <label className="block text-sm font-medium mb-1">File <span className="text-red-400">*</span></label>
             <input
@@ -102,6 +106,7 @@ export default function NewDocPage() {
             <p className="text-xs text-white/40 mt-1">Accepted: PDF, DOCX, Markdown, HTML, TXT</p>
           </div>
 
+          {/* Cover Image */}
           <div>
             <label className="block text-sm font-medium mb-1">Cover Image</label>
             <input
@@ -112,6 +117,8 @@ export default function NewDocPage() {
               className="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-sm file:font-semibold hover:file:bg-white/20 file:cursor-pointer"
             />
             <p className="text-xs text-white/40 mt-1">Optional. JPG, PNG, or WebP. Shown on doc cards.</p>
+
+            {/* Preview */}
             {preview && (
               <div className="mt-3">
                 <img
@@ -123,6 +130,7 @@ export default function NewDocPage() {
             )}
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={uploading}
