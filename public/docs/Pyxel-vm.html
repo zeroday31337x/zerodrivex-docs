@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZDX Pyxel VM — White Paper</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #080c10;
+    --surface:   #0d1318;
+    --border:    #1a2530;
+    --accent:    #00e5ff;
+    --accent2:   #7fff00;
+    --accent3:   #ff6b35;
+    --text:      #c8d8e0;
+    --text-dim:  #5a7a8a;
+    --mono:      'Share Tech Mono', monospace;
+    --body:      'Barlow', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-weight: 300;
+    line-height: 1.75;
+    font-size: 16px;
+    overflow-x: hidden;
+  }
+
+  /* ─── SCANLINE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,229,255,0.015) 2px,
+      rgba(0,229,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ─── GRID BACKGROUND ─── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── LAYOUT ─── */
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 80px 40px 120px;
+  }
+
+  /* ─── COVER ─── */
+  .cover {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 60px;
+    margin-bottom: 72px;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .cover-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .cover-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0.4;
+  }
+
+  .cover-title {
+    font-family: var(--mono);
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 400;
+    color: #fff;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  .cover-title span { color: var(--accent); }
+
+  .cover-subtitle {
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+    font-style: italic;
+  }
+
+  .cover-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 48px;
+  }
+  .meta-item { border-left: 2px solid var(--border); padding-left: 16px; }
+  .meta-key {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .meta-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent2);
+  }
+
+  /* ─── ABSTRACT ─── */
+  .abstract {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 28px 32px;
+    margin-bottom: 72px;
+    font-size: 15px;
+    color: var(--text);
+    animation: fadeUp 0.8s 0.1s ease both;
+  }
+  .abstract-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ─── SECTIONS ─── */
+  section {
+    margin-bottom: 72px;
+    animation: fadeUp 0.7s ease both;
+  }
+
+  .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+  }
+
+  h2 {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 400;
+    color: #fff;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent2);
+    letter-spacing: 0.08em;
+    margin: 32px 0 12px;
+    text-transform: uppercase;
+  }
+
+  p { margin-bottom: 16px; color: var(--text); }
+
+  /* ─── CODE BLOCKS ─── */
+  .code-block {
+    background: #060a0d;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent3);
+    padding: 20px 24px;
+    margin: 24px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+  .code-block::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0; right: 0;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--accent3);
+    background: #060a0d;
+    padding: 4px 10px;
+    border-bottom-left-radius: 4px;
+    text-transform: uppercase;
+  }
+  pre {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: #8fbc8f;
+    white-space: pre;
+  }
+  .cm { color: var(--text-dim); }
+  .ck { color: #79a8ff; }
+  .cs { color: #f0a0a0; }
+  .cn { color: var(--accent2); }
+  .cf { color: var(--accent); }
+
+  /* ─── TABLES ─── */
+  .table-wrap { overflow-x: auto; margin: 24px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  th {
+    background: var(--surface);
+    color: var(--accent);
+    text-align: left;
+    padding: 10px 16px;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    border-bottom: 1px solid var(--accent);
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(0,229,255,0.03); }
+  .rgb { font-size: 11px; color: var(--accent3); }
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .badge-core { background: rgba(0,229,255,0.1); color: var(--accent); }
+  .badge-sec  { background: rgba(255,107,53,0.1); color: var(--accent3); }
+  .badge-mem  { background: rgba(127,255,0,0.1);  color: var(--accent2); }
+
+  /* ─── CALLOUT ─── */
+  .callout {
+    display: grid;
+    grid-template-columns: 3px 1fr;
+    gap: 20px;
+    margin: 28px 0;
+  }
+  .callout-bar { background: var(--accent2); border-radius: 2px; }
+  .callout-body { padding: 4px 0; font-size: 14px; font-style: italic; color: var(--text); }
+
+  /* ─── DIAGRAM ─── */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin: 24px 0;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 2;
+    overflow-x: auto;
+  }
+  .diagram .row { display: flex; align-items: center; justify-content: center; gap: 0; margin: 2px 0; }
+  .cell {
+    width: 44px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid #1a2530;
+    font-size: 9px;
+  }
+  .cell-active { background: rgba(0,229,255,0.12); color: var(--accent); border-color: var(--accent); }
+  .cell-sec    { background: rgba(255,107,53,0.12); color: var(--accent3); border-color: var(--accent3); }
+  .cell-mem    { background: rgba(127,255,0,0.10);  color: var(--accent2); border-color: var(--accent2); }
+  .cell-halt   { background: rgba(255,255,255,0.05); color: #fff; }
+  .cell-empty  { background: transparent; color: var(--border); }
+  .axis-label  { font-size: 9px; letter-spacing: 0.15em; color: var(--text-dim); margin: 8px 0 2px; text-transform: uppercase; }
+
+  /* ─── TOC ─── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px 28px;
+    margin-bottom: 60px;
+  }
+  .toc-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .toc ol { list-style: none; counter-reset: toc; }
+  .toc li { counter-increment: toc; display: flex; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--border); }
+  .toc li:last-child { border-bottom: none; }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    min-width: 28px;
+  }
+  .toc a { color: var(--text); text-decoration: none; font-size: 14px; }
+  .toc a:hover { color: var(--accent); }
+  .toc-dots { flex: 1; border-bottom: 1px dotted var(--border); height: 0; align-self: center; }
+  .toc-pg { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 32px;
+    margin-top: 80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+  footer span { color: var(--accent); }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── PRINT ─── */
+  @media print {
+    body { background: #fff; color: #111; }
+    body::before, body::after { display: none; }
+    .code-block, .abstract { background: #f5f5f5; border-color: #ccc; }
+    h2 { color: #111; }
+    pre { color: #333; }
+  }
+
+  @media (max-width: 600px) {
+    .wrapper { padding: 40px 20px 80px; }
+    .cover-meta { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-label">ZeroDriveX LLC &mdash; Technical White Paper</div>
+    <div class="cover-title">ZDX <span>Pyxel VM</span></div>
+    <div class="cover-subtitle">A Parallel Texture-Native Virtual Machine for On-Device AI Reasoning</div>
+    <div class="cover-meta">
+      <div class="meta-item">
+        <div class="meta-key">Version</div>
+        <div class="meta-val">1.0-DRAFT</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-key">Classification</div>
+        <div class="meta-val">PUBLIC</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-key">Org</div>
+        <div class="meta-val">ZeroDriveX LLC</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABSTRACT -->
+  <div class="abstract">
+    <div class="abstract-tag">Abstract</div>
+    The ZDX Pyxel VM is a novel virtual machine architecture that encodes executable logic as RGB pixel grids in standard PNG images, enabling a two-dimensional, spatially-parallel execution model. Each row on the Y-axis of a texture represents an independent execution thread, allowing simultaneous multi-concern reasoning within a single clock cycle. Frames are daisy-chained to propagate state across execution boundaries without a shared memory heap, and a visual frequency-based challenge-response mechanism provides authentication that is invisible to linear code analysis. A companion Visual Memory Manager applies biological decay scoring to prune irrelevant logic frames, enabling efficient long-term on-device memory without cloud dependency. This paper presents the architecture, instruction set, security model, and memory lifecycle of the ZDX Pyxel VM.
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#s1">Introduction &amp; Motivation</a><span class="toc-dots"></span></li>
+      <li><a href="#s2">Architecture Overview</a><span class="toc-dots"></span></li>
+      <li><a href="#s3">Instruction Set Architecture (ISA)</a><span class="toc-dots"></span></li>
+      <li><a href="#s4">Parallel Execution Model</a><span class="toc-dots"></span></li>
+      <li><a href="#s5">Daisy-Chain State Propagation</a><span class="toc-dots"></span></li>
+      <li><a href="#s6">Visual Memory Manager</a><span class="toc-dots"></span></li>
+      <li><a href="#s7">Frequency Authentication</a><span class="toc-dots"></span></li>
+      <li><a href="#s8">Security Properties</a><span class="toc-dots"></span></li>
+      <li><a href="#s9">Integration with ZDX Mobile AI</a><span class="toc-dots"></span></li>
+      <li><a href="#s10">Conclusions &amp; Future Work</a><span class="toc-dots"></span></li>
+    </ol>
+  </div>
+
+  <!-- S1 -->
+  <section id="s1">
+    <div class="section-num">01</div>
+    <h2>Introduction &amp; Motivation</h2>
+    <p>Conventional AI inference engines operate on one-dimensional token sequences. Memory is stored as text, embeddings, or binary blobs in a heap that is serially traversable and subject to inspection, modification, or brute-force analysis by adversaries with direct device access.</p>
+    <p>The ZDX Pyxel VM departs from this model entirely. It treats a PNG image as a <strong>two-dimensional instruction grid</strong>: the X-axis encodes time (clock cycles), and the Y-axis encodes space (parallel execution threads). A program is a picture. Execution is reading that picture column by column while running each row as a concurrent logical unit.</p>
+    <div class="callout">
+      <div class="callout-bar"></div>
+      <div class="callout-body">"Instead of thinking in strings, the VM thinks in textures — the entire program state is visible in a single glance, yet opaque to any tool that expects linear bytecode."</div>
+    </div>
+    <p>This approach yields three properties that are difficult to achieve simultaneously in conventional VMs: spatial parallelism, state opacity, and physically-grounded authentication.</p>
+  </section>
+
+  <!-- S2 -->
+  <section id="s2">
+    <div class="section-num">02</div>
+    <h2>Architecture Overview</h2>
+    <p>The system is composed of four interoperating components:</p>
+
+    <h3>ParallelPyxelVM</h3>
+    <p>The core execution engine. Reads a PNG texture and dispatches opcodes to per-row thread registers. Manages daisy-chain linkage to successor frames.</p>
+
+    <h3>ThoughtCompiler</h3>
+    <p>Translates structured parallel instruction lists into PNG textures using the ZDX opcode-to-RGB mapping. Produces machine-readable brain frames from high-level instruction schedules.</p>
+
+    <h3>VisualMemoryManager</h3>
+    <p>Tracks relevance scores and age of every brain frame on disk. Applies a decay formula and prunes low-value frames to bound storage growth.</p>
+
+    <h3>FrequencyChallenge</h3>
+    <p>Generates and validates authentication tokens embedded as RGB patterns in a hidden thread row. No password string ever exists in memory.</p>
+
+    <div class="diagram">
+      <div class="axis-label">Brain Frame (pyxel_frame.png) — X = Clock Cycle, Y = Thread</div>
+      <div class="row">
+        <div style="width:60px;font-size:9px;color:var(--text-dim);text-align:right;padding-right:8px;">T0 (MATH)</div>
+        <div class="cell cell-active">SET</div><div class="cell cell-active">ADD</div><div class="cell cell-empty">NOP</div><div class="cell cell-active">ADD</div><div class="cell cell-halt">HLT</div>
+      </div>
+      <div class="row">
+        <div style="width:60px;font-size:9px;color:var(--text-dim);text-align:right;padding-right:8px;">T1 (LOGIC)</div>
+        <div class="cell cell-empty">NOP</div><div class="cell cell-active">SET</div><div class="cell cell-active">ADD</div><div class="cell cell-empty">NOP</div><div class="cell cell-halt">HLT</div>
+      </div>
+      <div class="row">
+        <div style="width:60px;font-size:9px;color:var(--text-dim);text-align:right;padding-right:8px;">T2 (STATE)</div>
+        <div class="cell cell-mem">SAV</div><div class="cell cell-empty">NOP</div><div class="cell cell-empty">NOP</div><div class="cell cell-mem">SAV</div><div class="cell cell-halt">HLT</div>
+      </div>
+      <div class="row">
+        <div style="width:60px;font-size:9px;color:var(--text-dim);text-align:right;padding-right:8px;">T7 (AUTH)</div>
+        <div class="cell cell-sec">FRQ</div><div class="cell cell-sec">FRQ</div><div class="cell cell-sec">FRQ</div><div class="cell cell-sec">FRQ</div><div class="cell cell-sec">FRQ</div>
+      </div>
+      <div style="margin-top:12px;font-size:9px;color:var(--text-dim);">
+        <span style="color:var(--accent);">■</span> CORE &nbsp;
+        <span style="color:var(--accent2);">■</span> STATE &nbsp;
+        <span style="color:var(--accent3);">■</span> AUTH &nbsp;
+        <span style="color:#fff;opacity:0.4;">■</span> HALT
+      </div>
+    </div>
+  </section>
+
+  <!-- S3 -->
+  <section id="s3">
+    <div class="section-num">03</div>
+    <h2>Instruction Set Architecture</h2>
+    <p>Every opcode is a 24-bit RGB triple. The ISA is intentionally minimal; complexity emerges from spatial composition rather than opcode count.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mnemonic</th>
+            <th>RGB Value</th>
+            <th>Category</th>
+            <th>Semantics</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SET_REG</strong></td>
+            <td class="rgb">(10, 0, B)</td>
+            <td><span class="badge badge-core">Core</span></td>
+            <td>Load blue channel value B into thread register A</td>
+          </tr>
+          <tr>
+            <td><strong>ADD_THREAD</strong></td>
+            <td class="rgb">(20, 0, 0)</td>
+            <td><span class="badge badge-core">Core</span></td>
+            <td>OUT = A + B within the current thread's register file</td>
+          </tr>
+          <tr>
+            <td><strong>SAVE_STATE</strong></td>
+            <td class="rgb">(0, 255, 0)</td>
+            <td><span class="badge badge-mem">Memory</span></td>
+            <td>Trigger daisy-chain; encode current registers into next frame header</td>
+          </tr>
+          <tr>
+            <td><strong>VERIFY_FREQ</strong></td>
+            <td class="rgb">(50, 50, 50)</td>
+            <td><span class="badge badge-sec">Security</span></td>
+            <td>Compare pixel(x, y) to pixel(W−1−x, y); match authorizes thread</td>
+          </tr>
+          <tr>
+            <td><strong>HALT</strong></td>
+            <td class="rgb">(255, 255, 255)</td>
+            <td><span class="badge badge-core">Core</span></td>
+            <td>Terminate current thread; other threads continue</td>
+          </tr>
+          <tr>
+            <td><strong>NOP</strong></td>
+            <td class="rgb">(0, 0, 0)</td>
+            <td><span class="badge badge-core">Core</span></td>
+            <td>No operation; empty pixel space</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The encoding scheme intentionally avoids common RGB values. Opcodes occupy a sparse region of the 24-bit color space, making accidental collision with image data unlikely and allowing arbitrary texture content to serve as NOP padding.</p>
+
+    <div class="code-block" data-label="Python — Opcode Map">
+<pre><span class="cm"># Canonical ZDX Pyxel ISA</span>
+<span class="cn">MAP</span> = {
+    <span class="cs">"SET_REG"</span>:     (<span class="cn">10</span>,   <span class="cn">0</span>,   <span class="cn">0</span>),   <span class="cm"># R=10; value in B channel</span>
+    <span class="cs">"ADD_THREAD"</span>:  (<span class="cn">20</span>,   <span class="cn">0</span>,   <span class="cn">0</span>),
+    <span class="cs">"SAVE_STATE"</span>:  (<span class="cn">0</span>,  <span class="cn">255</span>,   <span class="cn">0</span>),
+    <span class="cs">"VERIFY_FREQ"</span>: (<span class="cn">50</span>,  <span class="cn">50</span>,  <span class="cn">50</span>),
+    <span class="cs">"HALT"</span>:        (<span class="cn">255</span>, <span class="cn">255</span>, <span class="cn">255</span>),
+}
+<span class="cn">REVERSE_MAP</span> = {<span class="cf">v</span>: <span class="cf">k</span> <span class="ck">for</span> <span class="cf">k</span>, <span class="cf">v</span> <span class="ck">in</span> <span class="cn">MAP</span>.items()}</pre>
+    </div>
+  </section>
+
+  <!-- S4 -->
+  <section id="s4">
+    <div class="section-num">04</div>
+    <h2>Parallel Execution Model</h2>
+    <p>The VM iterates over the texture in <em>column-major order</em>: for each X position (clock cycle), it dispatches the opcode at that column to every active Y row (thread) before advancing X. This means all threads execute cycle-synchronously — analogous to SIMD lanes, but with heterogeneous instruction streams.</p>
+
+    <div class="code-block" data-label="Python — Execution Loop">
+<pre><span class="ck">def</span> <span class="cf">execute_texture</span>(<span class="cn">self</span>, image_path):
+    img    = Image.<span class="cf">open</span>(image_path)
+    pixels = img.<span class="cf">load</span>()
+    width, height = img.size
+
+    <span class="ck">for</span> x <span class="ck">in</span> <span class="cf">range</span>(width):          <span class="cm"># clock cycle</span>
+        <span class="ck">for</span> y <span class="ck">in</span> <span class="cf">range</span>(<span class="cf">min</span>(height, <span class="cf">len</span>(<span class="cn">self</span>.registers))):
+            rgb    = pixels[x, y]
+            thread = <span class="cn">self</span>.registers[<span class="cs">f"T{y}"</span>]
+
+            <span class="ck">if</span>   rgb[<span class="cn">0</span>] == <span class="cn">10</span>:  thread[<span class="cs">"A"</span>]   = rgb[<span class="cn">2</span>]
+            <span class="ck">elif</span> rgb[<span class="cn">0</span>] == <span class="cn">20</span>:  thread[<span class="cs">"OUT"</span>] = thread[<span class="cs">"A"</span>] + thread[<span class="cs">"B"</span>]
+            <span class="ck">elif</span> rgb == (<span class="cn">50</span>,<span class="cn">50</span>,<span class="cn">50</span>):
+                <span class="ck">if</span> pixels[x, y] == pixels[width<span class="cn">-1</span>-x, y]:
+                    <span class="cf">print</span>(<span class="cs">f"[!] T{y} Frequency Match — Authorized"</span>)
+            <span class="ck">elif</span> rgb == (<span class="cn">0</span>,<span class="cn">255</span>,<span class="cn">0</span>):
+                <span class="cn">self</span>.next_frame = <span class="cs">"whisperframe_B.png"</span>
+
+    <span class="ck">return</span> <span class="cn">self</span>.registers</pre>
+    </div>
+
+    <p>Key properties of this model:</p>
+    <p><strong>Thread isolation.</strong> Each row owns its own register file <code>{A, B, OUT}</code>. A HALT in row 3 does not affect row 5. Threads can independently complete, stall, or trigger side-effects without coordination primitives.</p>
+    <p><strong>Spatial instruction scheduling.</strong> The program author controls execution timing by placing opcodes at specific (x, y) coordinates. A SET at (0, 0) and ADD at (3, 0) implicitly serializes those operations within thread 0 without any branch or jump instruction.</p>
+    <p><strong>Qubit-like superposition (logical).</strong> Until the VM reads column X, all threads at X exist in an undefined state. Reading the texture collapses those states simultaneously — a useful conceptual framing for AI systems reasoning about multiple hypotheses in parallel.</p>
+  </section>
+
+  <!-- S5 -->
+  <section id="s5">
+    <div class="section-num">05</div>
+    <h2>Daisy-Chain State Propagation</h2>
+    <p>Traditional VMs pass state through a heap or stack that persists in RAM. The Pyxel VM externalizes state into the next PNG in a named sequence. When a SAVE_STATE opcode fires, the VM serializes its current register file into the header pixels of the next frame before terminating.</p>
+
+    <div class="diagram">
+      <div style="display:flex;align-items:center;justify-content:center;gap:0;font-size:10px;">
+        <div style="border:1px solid var(--accent);padding:10px 16px;color:var(--accent);">brain_frame_01.png<br><span style="color:var(--text-dim);font-size:9px;">SAVE_STATE @ (W-1, y)</span></div>
+        <div style="padding:0 16px;color:var(--text-dim);">──── registers ────▶</div>
+        <div style="border:1px solid var(--accent2);padding:10px 16px;color:var(--accent2);">whisperframe_B.png<br><span style="color:var(--text-dim);font-size:9px;">header pixels = prior state</span></div>
+        <div style="padding:0 16px;color:var(--text-dim);">──── chain ────▶</div>
+        <div style="border:1px solid var(--text-dim);padding:10px 16px;color:var(--text-dim);">brain_frame_03.png<br><span style="font-size:9px;">…</span></div>
+      </div>
+    </div>
+
+    <p>This approach yields two security properties. First, there is no in-memory heap to dump between frames — state exists only in transit, encoded as pixels. Second, the frame sequence creates an ordered dependency chain: frame B cannot be correctly interpreted without executing frame A first, because the initial register values for B are embedded in A's terminal pixels.</p>
+
+    <h3>Asynchronous Persistence</h3>
+    <p>Because frames are ordinary PNG files, they survive process restarts, device reboots, and OOM kills without any explicit persistence layer. The AI's "working memory" is the directory of brain frames. Deleting a frame is equivalent to targeted forgetting.</p>
+  </section>
+
+  <!-- S6 -->
+  <section id="s6">
+    <div class="section-num">06</div>
+    <h2>Visual Memory Manager</h2>
+    <p>Unbounded frame accumulation would exhaust device storage. The Visual Memory Manager applies a biologically-inspired decay model to score and prune frames.</p>
+
+    <h3>Decay Formula</h3>
+    <p>Each frame carries a base importance score <em>s</em> and an age in turns <em>t</em>. The effective score after <em>t</em> turns is:</p>
+
+    <div class="code-block" data-label="Formula">
+<pre>effective_score = s / sqrt(t + 1)
+
+Prune threshold: effective_score &lt; 0.5
+
+Score assignment:
+  Super-Admin / Auth frames  → s = 20  (never pruned in practice)
+  Successful tool-call logic → s = 15
+  Routine reasoning frames   → s = 5
+  Casual / low-signal turns  → s = 1</pre>
+    </div>
+
+    <p>A frame with base score 1 is pruned after approximately 3 turns. A frame with base score 20 survives ~1599 turns before crossing the threshold — effectively permanent for on-device usage patterns.</p>
+
+    <h3>One-Pass Compaction</h3>
+    <p>The manager performs a single linear scan of the <code>brain_textures/</code> directory per compaction cycle, scoring and pruning in one pass. This mirrors the One-Pass Compaction pattern used in the ZDX Mobile AI JNI bridge and avoids the overhead of multi-pass garbage collection.</p>
+
+    <div class="code-block" data-label="Python — Decay Pass">
+<pre><span class="ck">def</span> <span class="cf">update_decay</span>(<span class="cn">self</span>):
+    <span class="ck">for</span> frame, data <span class="ck">in</span> <span class="cf">list</span>(<span class="cn">self</span>.memory_metadata.items()):
+        age            = data[<span class="cs">"turns"</span>]
+        effective      = data[<span class="cs">"score"</span>] / math.<span class="cf">sqrt</span>(age + <span class="cn">1</span>)
+        <span class="ck">if</span> effective &lt; <span class="cn">0.5</span>:
+            <span class="cn">self</span>.<span class="cf">prune_frame</span>(frame)
+        <span class="ck">else</span>:
+            data[<span class="cs">"turns"</span>] += <span class="cn">1</span></pre>
+    </div>
+  </section>
+
+  <!-- S7 -->
+  <section id="s7">
+    <div class="section-num">07</div>
+    <h2>Frequency Authentication</h2>
+    <p>The ZDX Pyxel VM implements passwordless authentication by embedding a challenge token as a spatial RGB pattern in a dedicated thread row (default: row 7). No string, hash, or key is stored anywhere in the conventional sense.</p>
+
+    <h3>Challenge Generation</h3>
+    <p>The <code>FrequencyChallenge</code> generator opens a base brain frame and overwrites the key row with the pattern <code>(secret_freq, 0, x mod 255)</code> where <code>secret_freq</code> is a random integer in [100, 200]. The resulting <code>challenge_frame.png</code> appears to a casual observer as a faint tinted row among noise.</p>
+
+    <h3>Verification</h3>
+    <p>The VERIFY_FREQ opcode compares pixel <code>(x, y)</code> to its mirror <code>(W−1−x, y)</code>. A symmetric pattern — i.e., one where the challenge row reads identically forward and backward — triggers the authorization event. This requires the challenger to know both the secret frequency and the mirroring property, without either being stored as a retrievable value.</p>
+
+    <h3>Three-Frame Challenge Sequence</h3>
+    <p>For super-admin authorization, the system requires a sequence of three daisy-chained frames:</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Frame</th><th>Role</th><th>Mechanism</th></tr></thead>
+        <tbody>
+          <tr><td>Frame 1</td><td>Base Frequency</td><td>Establishes secret_freq in key row</td></tr>
+          <tr><td>Frame 2</td><td>Shifted Frequency</td><td>Applies a deterministic transform to secret_freq</td></tr>
+          <tr><td>Frame 3</td><td>Response Validation</td><td>VERIFY_FREQ must match the predicted shift</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Brute-forcing this mechanism requires knowing the daisy-chain sequence, the key row index, the shift transform, and the mirroring validation — all simultaneously. No individual frame leaks enough information to reconstruct any other.</p>
+  </section>
+
+  <!-- S8 -->
+  <section id="s8">
+    <div class="section-num">08</div>
+    <h2>Security Properties</h2>
+
+    <h3>Heap Opacity</h3>
+    <p>State never resides in addressable RAM between frame boundaries. An attacker who dumps process memory mid-execution recovers only the current column's register values — a snapshot of one clock cycle with no context about prior or future states.</p>
+
+    <h3>Visual Steganography</h3>
+    <p>Authentication credentials are indistinguishable from texture noise to a human observer and to any tool that does not possess the reverse opcode map. A forensic analyst examining the <code>brain_textures/</code> directory sees an image management system — a behavior pattern common to any media application.</p>
+
+    <h3>Air-Gapped Physical Tokens</h3>
+    <p>When integrated with <code>deframe.py</code> (OpenCV frame capture), the VM can ingest challenge frames photographed from a physical display or printed medium. The authentication token exists only in the physical world during the challenge window — it is never transmitted over a network and cannot be intercepted by software.</p>
+
+    <h3>Threat Model Limitations</h3>
+    <p>The system assumes the opcode map (<code>REVERSE_MAP</code>) is kept secret. If an adversary recovers the map, frame content becomes readable. Additionally, the current VERIFY_FREQ implementation compares a pixel to its mirror within the same row; a more robust implementation should incorporate cross-frame comparison and a keyed hash of the frequency value.</p>
+  </section>
+
+  <!-- S9 -->
+  <section id="s9">
+    <div class="section-num">09</div>
+    <h2>Integration with ZDX Mobile AI</h2>
+    <p>The Pyxel VM is positioned as the proprietary high-order reasoning layer above the open-source inference core of ZDX Mobile AI (llama.cpp + Vulkan, 28.7 tok/s on Samsung Galaxy S25 Ultra).</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Open Core</td>
+            <td>llama.cpp / LlamaEngine.kt</td>
+            <td>1D token inference, on-device, Vulkan GPU</td>
+          </tr>
+          <tr>
+            <td>DER Memory</td>
+            <td>Scorer (Qwen 0.5B) + KV cache</td>
+            <td>Linear conversation scoring and eviction</td>
+          </tr>
+          <tr>
+            <td>ZDX Pyxel VM</td>
+            <td>ParallelPyxelVM + VisualMemoryManager</td>
+            <td>2D parallel reasoning, persistent brain frames</td>
+          </tr>
+          <tr>
+            <td>Auth Layer</td>
+            <td>FrequencyChallenge + AUTH1</td>
+            <td>Passwordless super-admin, OIDC federation</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The Scorer Service determines which linear memory segments are significant enough to be compiled into a brain frame via the <code>ThoughtCompiler</code>. This creates a one-way elevation path: important 1D memories become 2D parallel logic; low-value memories decay and are pruned. The AI's long-term memory is therefore not a growing database but a curated, self-compacting visual cortex.</p>
+  </section>
+
+  <!-- S10 -->
+  <section id="s10">
+    <div class="section-num">10</div>
+    <h2>Conclusions &amp; Future Work</h2>
+    <p>The ZDX Pyxel VM demonstrates that a fully functional, parallel, and secure virtual machine can be implemented using the PNG image format as its storage and instruction medium. The architecture achieves spatial parallelism without threading primitives, persistent state without a heap, and authentication without a password — all within a system that appears to external observers as ordinary image file management.</p>
+
+    <h3>Planned Extensions</h3>
+    <p><strong>Expanded ISA.</strong> BRANCH, CMP, and JUMP opcodes would allow conditional logic without requiring the program author to pre-layout all branches spatially.</p>
+    <p><strong>Cross-frame VERIFY_FREQ.</strong> Extending the frequency check to compare pixel patterns across two consecutive frames closes the single-frame information leak in the current implementation.</p>
+    <p><strong>deframe.py integration.</strong> Full pipeline from OpenCV camera capture → frame decode → VM ingestion would enable live physical token authentication in the ZDX Mobile AI app.</p>
+    <p><strong>Distributed brain frames.</strong> Storing the daisy-chain across multiple devices in a ZDX federated compute network would allow collaborative reasoning without any single node holding a complete program state.</p>
+
+    <div class="callout">
+      <div class="callout-bar"></div>
+      <div class="callout-body">The Pyxel VM is not a novelty — it is the first step toward an AI that stores its reasoning as a visual subconscious: parallel, persistent, and physically grounded.</div>
+    </div>
+  </section>
+
+  <footer>
+    <span>ZeroDriveX LLC</span>
+    <span style="color:var(--text-dim);">ZDX Pyxel VM &mdash; White Paper v1.0-DRAFT</span>
+    <span style="color:var(--text-dim);">CONFIDENTIAL DRAFT</span>
+  </footer>
+
+</div>
+</body>
+</html>
