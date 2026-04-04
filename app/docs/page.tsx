@@ -1,8 +1,11 @@
+// app/docs/page.tsx
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell'
 import { getPublishedDocuments } from '@/lib/documents'
 
-export const dynamic = 'force-dynamic'
+// Force ISR instead of full dynamic rendering for performance
+export const revalidate = 60 // revalidate every 60 seconds
 
+// Color mapping for document types
 const TYPE_COLOR: Record<string, string> = {
   RESEARCH: 'bg-blue-500/20 text-blue-300',
   WHITEPAPER: 'bg-purple-500/20 text-purple-300',
@@ -11,6 +14,7 @@ const TYPE_COLOR: Record<string, string> = {
   INTERNAL: 'bg-gray-500/20 text-gray-300',
 }
 
+// Format labels
 const FORMAT_LABEL: Record<string, string> = {
   PDF: 'PDF',
   DOCX: 'DOCX',
@@ -19,7 +23,112 @@ const FORMAT_LABEL: Record<string, string> = {
   TEXT: 'TXT',
 }
 
-function Section({ title, docs }: any) {
+// Config for sections
+const SECTION_CONFIG = [
+  { type: 'PRODUCT', title: 'Product Documentation' },
+  { type: 'RESEARCH', title: 'Research Papers' },
+  { type: 'WHITEPAPER', title: 'Whitepapers' },
+  { type: 'INTERNAL', title: 'Internal Policies' },
+]
+
+// Type definitions
+type Doc = {
+  id: string
+  title: string
+  slug: string
+  type: 'RESEARCH' | 'WHITEPAPER' | 'PRODUCT' | 'BLOG' | 'INTERNAL'
+  format: 'PDF' | 'DOCX' | 'MARKDOWN' | 'HTML' | 'TEXT'
+  summary?: string
+  image?: string
+  sourcePath: string
+  createdAt: string
+}
+
+// Helper: safely resolve image URL
+function resolveImage(src?: string) {
+  if (!src) return null
+  if (src.startsWith('http')) return src
+  if (src.startsWith('/')) return src
+  return `/images/covers/${src}`
+}
+
+// Helper: group documents by type
+function groupByType(docs: Doc[]) {
+  return docs.reduce((acc, doc) => {
+    if (!acc[doc.type]) acc[doc.type] = []
+    acc[doc.type].push(doc)
+    return acc
+  }, {} as Record<string, Doc[]>)
+}
+
+// Component: single document card
+function DocCard({ doc }: { doc: Doc }) {
+  const imgSrc = resolveImage(doc.image)
+  const isExternal = doc.sourcePath.startsWith('http')
+
+  return (
+    <div className="flex flex-col rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition">
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={doc.title || 'Document cover'}
+          className="w-full h-40 object-cover rounded-t-xl"
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-40 bg-black border-b border-white/10 flex items-center justify-center text-xs text-white/40">
+          ZeroDriveX
+        </div>
+      )}
+
+      <div className="p-5 flex flex-col flex-1">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span
+            className={`text-xs px-2 py-0.5 rounded font-semibold ${
+              TYPE_COLOR[doc.type] ?? 'bg-white/10 text-white/60'
+            }`}
+          >
+            {doc.type}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-white/50">
+            {FORMAT_LABEL[doc.format] ?? doc.format}
+          </span>
+        </div>
+
+        <h3 className="text-base font-semibold mb-2">{doc.title}</h3>
+
+        {doc.summary && (
+          <p className="text-sm text-white/60 mb-4 flex-1">{doc.summary}</p>
+        )}
+
+        <div className="flex gap-2 mt-auto pt-3 border-t border-white/10 flex-col sm:flex-row">
+          <a
+            href={`/docs/${doc.slug}`}
+            className="flex-1 text-center px-3 py-2 text-xs font-bold rounded-lg bg-green-600 hover:bg-green-700 transition"
+          >
+            Read
+          </a>
+
+          <a
+            href={doc.sourcePath}
+            target={isExternal ? '_blank' : '_self'}
+            rel={isExternal ? 'noopener noreferrer' : undefined}
+            className="flex-1 text-center px-3 py-2 text-xs font-bold rounded-lg border border-white/20 hover:bg-white/10 transition"
+          >
+            Download
+          </a>
+        </div>
+
+        <p className="text-xs text-white/30 mt-2 text-right">
+          {new Date(doc.createdAt).toLocaleDateString()}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// Component: section of documents
+function Section({ title, docs }: { title: string; docs: Doc[] }) {
   if (!docs.length) return null
 
   return (
@@ -29,83 +138,21 @@ function Section({ title, docs }: any) {
       </h2>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {docs.map((doc: any) => (
-          <div
-            key={doc.id}
-            className="flex flex-col rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
-          >
-            {doc.image ? (
-              <img
-                src={doc.image.startsWith('/images/covers/')
-                  ? doc.image
-                  : `/images/covers/${doc.image.split('/').pop()}`}
-                className="w-full h-40 object-cover rounded-t-xl"
-                alt={doc.title}
-              />
-            ) : (
-              <div className="w-full h-40 bg-black border-b border-white/10 flex items-center justify-center text-xs text-white/40">
-                ZeroDriveX
-              </div>
-            )}
-
-            <div className="p-5 flex flex-col flex-1">
-
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span
-                  className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                    TYPE_COLOR[doc.type] ?? 'bg-white/10 text-white/60'
-                  }`}
-                >
-                  {doc.type}
-                </span>
-
-                <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-white/50">
-                  {FORMAT_LABEL[doc.format] ?? doc.format}
-                </span>
-              </div>
-
-              <h3 className="text-base font-semibold mb-2">{doc.title}</h3>
-
-              {doc.summary && (
-                <p className="text-sm text-white/60 mb-4 flex-1">{doc.summary}</p>
-              )}
-
-              <div className="flex gap-2 mt-auto pt-3 border-t border-white/10 flex-col sm:flex-row">
-                <a
-                  href={`/docs/${doc.slug}`}
-                  className="flex-1 text-center px-3 py-2 text-xs font-bold rounded-lg bg-green-600 hover:bg-green-700 transition"
-                >
-                  Read
-                </a>
-
-                <a
-                  href={doc.sourcePath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 text-center px-3 py-2 text-xs font-bold rounded-lg border border-white/20 hover:bg-white/10 transition"
-                >
-                  Download
-                </a>
-              </div>
-
-              <p className="text-xs text-white/30 mt-2 text-right">
-                {new Date(doc.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
+        {docs.map((doc) => (
+          <DocCard key={doc.id} doc={doc} />
         ))}
       </div>
     </>
   )
 }
 
+// Main page
 export default async function HomePage() {
-  const docs = await getPublishedDocuments()
+  const docs = (await getPublishedDocuments()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
 
-  const productDocs = docs.filter((d: any) => d.type === 'PRODUCT')
-  const researchDocs = docs.filter((d: any) => d.type === 'RESEARCH')
-  const whitepapers = docs.filter((d: any) => d.type === 'WHITEPAPER')
-  const internalDocs = docs.filter((d: any) => d.type === 'INTERNAL')
+  const groupedDocs = groupByType(docs)
 
   return (
     <ZdxDocsShell
@@ -115,7 +162,6 @@ export default async function HomePage() {
           'Research papers, whitepapers, product documentation, and technical specifications',
       }}
     >
-
       <div className="mb-12 p-8 rounded-xl border border-white/10 bg-white/5 text-center max-w-3xl mx-auto">
         <h2 className="text-xl font-bold text-yellow-400 mb-3">
           ZeroDriveX Research Library
@@ -152,11 +198,9 @@ export default async function HomePage() {
         </a>
       </div>
 
-      <Section title="Product Documentation" docs={productDocs} />
-      <Section title="Research Papers" docs={researchDocs} />
-      <Section title="Whitepapers" docs={whitepapers} />
-      <Section title="Internal Policies" docs={internalDocs} />
-
+      {SECTION_CONFIG.map(({ type, title }) => (
+        <Section key={type} title={title} docs={groupedDocs[type] ?? []} />
+      ))}
     </ZdxDocsShell>
   )
 }
