@@ -12,7 +12,16 @@ const FORMAT_MAP: Record<DocumentFormat, DocType> = {
   TEXT:     'txt',
 };
 
-export async function getDocumentBySlug(slug: string) {
+// Added summary to return type
+export async function getDocumentBySlug(slug: string): Promise<{
+  title: string;
+  published: boolean;
+  type: DocType;
+  fileUrl: string;
+  textContent: string;
+  category: string;
+  summary?: string; // <-- added summary here
+}> {
   const doc = await prisma.document.findUnique({
     where: { slug },
     select: {
@@ -21,27 +30,28 @@ export async function getDocumentBySlug(slug: string) {
       format:      true,
       sourcePath:  true,
       contentText: true,
+      summary:     true,   // <-- select summary
       categories: {
         select: { category: { select: { name: true } } },
       },
     },
   });
 
-if (!doc) return null;
+  if (!doc) return null;
 
-const type = FORMAT_MAP[doc.format] ?? 'txt';
+  const type = FORMAT_MAP[doc.format] ?? 'txt';
 
-return {
-  title: doc.title,
-  published: doc.published,
-  type,
-  fileUrl: doc.sourcePath ?? '',
-  textContent: doc.contentText ?? '',
-  category:
-    doc.categories.map((c) => c.category.name).join(', ') ||
-    'Documentation',
-};  
-
+  return {
+    title: doc.title,
+    published: doc.published,
+    type,
+    fileUrl: doc.sourcePath ?? '',
+    textContent: doc.contentText ?? '',
+    summary: doc.summary ?? undefined,  // <-- map summary
+    category:
+      doc.categories.map((c) => c.category.name).join(', ') ||
+      'Documentation',
+  };
 }
 
 export async function getPublishedDocuments() {
@@ -49,7 +59,7 @@ export async function getPublishedDocuments() {
     where: { published: true },
     orderBy: { createdAt: 'desc' },
     select: {
-      id: true, slug: true, title: true, image: true,  summary: true,
+      id: true, slug: true, title: true, image: true, summary: true,
       type: true, format: true, sourcePath: true, createdAt: true,
       categories: { select: { category: { select: { name: true, slug: true } } } },
     },
@@ -62,6 +72,7 @@ export async function getAllDocumentsAdmin() {
     select: {
       id: true, slug: true, title: true,
       type: true, format: true, published: true, createdAt: true,
+      summary: true,  // <-- include summary here too
     },
   });
 }
@@ -87,13 +98,9 @@ export async function getDocuments(params: {
   const page = params.page ?? 1;
   const skip = (page - 1) * PAGE_SIZE;
 
-  const where: any = {
-    published: true,
-  };
+  const where: any = { published: true };
 
-  if (params.type) {
-    where.type = params.type;
-  }
+  if (params.type) where.type = params.type;
 
   if (params.q) {
     where.OR = [
@@ -106,11 +113,7 @@ export async function getDocuments(params: {
 
   if (params.category) {
     where.categories = {
-      some: {
-        category: {
-          slug: params.category,
-        },
-      },
+      some: { category: { slug: params.category } },
     };
   }
 
@@ -125,16 +128,12 @@ export async function getDocuments(params: {
         slug: true,
         title: true,
         image: true,
-        summary: true,
+        summary: true,   // <-- select summary
         type: true,
         format: true,
         createdAt: true,
         categories: {
-          select: {
-            category: {
-              select: { name: true, slug: true },
-            },
-          },
+          select: { category: { select: { name: true, slug: true } } },
         },
       },
     }),
