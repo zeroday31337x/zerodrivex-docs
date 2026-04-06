@@ -2,41 +2,21 @@
 
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
 import { getPublishedDocuments } from '@/lib/documents';
-import { notFound } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
 
 type Doc = {
   id: string;
   slug: string;
   title: string;
-  summary?: string | null;
-  type: 'RESEARCH' | 'WHITEPAPER' | 'PRODUCT' | 'BLOG' | 'INTERNAL';
-  format: 'PDF' | 'DOCX' | 'MARKDOWN' | 'HTML' | 'TEXT';
-  image?: string | null;
-  sourcePath?: string | null;
-  textContent?: string | null;
+  summary?: string;
+  type: string;
+  format: string;
+  image?: string;
+  sourcePath?: string;
   createdAt: string;
 };
 
-const TYPE_COLOR: Record<Doc['type'], string> = {
-  RESEARCH: 'bg-blue-500/20 text-blue-300',
-  WHITEPAPER: 'bg-purple-500/20 text-purple-300',
-  PRODUCT: 'bg-yellow-500/20 text-yellow-300',
-  BLOG: 'bg-green-500/20 text-green-300',
-  INTERNAL: 'bg-gray-500/20 text-gray-300',
-};
-
-const FORMAT_LABEL: Record<Doc['format'], string> = {
-  PDF: 'PDF',
-  DOCX: 'DOCX',
-  MARKDOWN: 'MD',
-  HTML: 'HTML',
-  TEXT: 'TXT',
-};
-
 function Section({ title, docs }: { title: string; docs: Doc[] }) {
-  if (!docs || docs.length === 0) return null;
+  if (!docs.length) return null;
 
   return (
     <>
@@ -60,27 +40,19 @@ function Section({ title, docs }: { title: string; docs: Doc[] }) {
                 ZeroDriveX
               </div>
             )}
-
             <div className="p-5 flex flex-col flex-1">
               <div className="flex items-center gap-2 mb-3">
-                <span
-                  className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                    TYPE_COLOR[doc.type] ?? 'bg-white/10 text-white/60'
-                  }`}
-                >
-                  {doc.type ?? 'UNKNOWN'}
+                <span className="text-xs px-2 py-0.5 rounded font-semibold bg-white/10 text-white/60">
+                  {doc.type}
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-white/50">
-                  {FORMAT_LABEL[doc.format] ?? doc.format ?? 'TXT'}
+                  {doc.format}
                 </span>
               </div>
-
               <h3 className="text-base font-semibold mb-2">{doc.title}</h3>
-
               {doc.summary && (
                 <p className="text-sm text-white/60 mb-4 flex-1">{doc.summary}</p>
               )}
-
               <div className="flex gap-2 mt-auto pt-3 border-t border-white/10">
                 <a
                   href={`/docs/${doc.slug}`}
@@ -99,9 +71,10 @@ function Section({ title, docs }: { title: string; docs: Doc[] }) {
                   </a>
                 )}
               </div>
-
               <p className="text-xs text-white/30 mt-2">
-                {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : ''}
+                {doc.createdAt
+                  ? new Date(doc.createdAt).toLocaleDateString()
+                  : ''}
               </p>
             </div>
           </div>
@@ -113,23 +86,6 @@ function Section({ title, docs }: { title: string; docs: Doc[] }) {
 
 export default async function HomePage() {
   const docs: Doc[] = (await getPublishedDocuments()) ?? [];
-
-  if (!docs.length) {
-    return (
-      <ZdxDocsShell
-        headerProps={{
-          title: 'ZeroDriveX Documentation',
-          subtitle:
-            'Research papers, whitepapers, product documentation, and technical specifications',
-        }}
-      >
-        <div className="text-center py-20 text-white/70">
-          <h2 className="text-2xl font-bold mb-4">No documents available</h2>
-          <p>Please check back later.</p>
-        </div>
-      </ZdxDocsShell>
-    );
-  }
 
   const productDocs = docs.filter((d) => d.type === 'PRODUCT');
   const researchDocs = docs.filter((d) => d.type === 'RESEARCH');
@@ -144,17 +100,6 @@ export default async function HomePage() {
           'Research papers, whitepapers, product documentation, and technical specifications',
       }}
     >
-      {/* Top intro section */}
-      <div className="mb-12 p-8 rounded-xl border border-white/10 bg-white/5 text-center max-w-3xl mx-auto">
-        <h2 className="text-xl font-bold text-yellow-400 mb-3">
-          ZeroDriveX Research Library
-        </h2>
-        <p className="text-white/70 text-sm leading-relaxed">
-          This documentation portal contains research papers, technical specifications, and architecture documentation for the ZeroDriveX AI ecosystem including ZDX AI, ZDX Mobile AI, and ZDX Guard.
-        </p>
-        <div className="w-24 h-px bg-yellow-500/30 mx-auto mt-6"></div>
-      </div>
-
       {/* Quick links */}
       <div className="grid md:grid-cols-3 gap-4 mb-12">
         <a
