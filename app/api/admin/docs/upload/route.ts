@@ -6,21 +6,23 @@ import formidable from 'formidable';
 
 export const runtime = 'nodejs';
 
-// Allowed enum values for Prisma DocumentType
+// Allowed enum values for Prisma DocumentType and DocumentFormat
 const ALLOWED_TYPES = ['RESEARCH', 'WHITEPAPER', 'PRODUCT', 'BLOG', 'INTERNAL'] as const;
 type DocumentType = (typeof ALLOWED_TYPES)[number];
+
+const ALLOWED_FORMATS = ['PDF', 'DOCX', 'MARKDOWN', 'HTML', 'TEXT'] as const;
+type DocumentFormat = (typeof ALLOWED_FORMATS)[number];
 
 export async function POST(req: NextRequest) {
   const uploadDir = path.join(process.cwd(), 'public/images/covers');
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  // Convert NextRequest to Node.js compatible request for formidable
   const buffer = Buffer.from(await req.arrayBuffer());
   const fakeReq: any = {
     headers: Object.fromEntries(req.headers.entries()),
     method: req.method,
     url: req.url,
-    on: () => {}, // dummy function required by formidable
+    on: () => {},
   };
 
   return new Promise<Response>((resolve, reject) => {
@@ -29,21 +31,27 @@ export async function POST(req: NextRequest) {
     form.parse({ ...fakeReq, rawBody: buffer } as any, async (err, fields, files) => {
       if (err) return reject(err);
 
-      // Extract and validate fields
       const title = fields.title as string;
       const type = fields.type as string;
       const format = fields.format as string;
       const summary = fields.summary as string;
 
+      // Validate required fields
       if (!title || !type || !format) {
         return resolve(
           NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         );
       }
 
+      // Validate enum values
       if (!ALLOWED_TYPES.includes(type as DocumentType)) {
         return resolve(
           NextResponse.json({ error: 'Invalid document type' }, { status: 400 })
+        );
+      }
+      if (!ALLOWED_FORMATS.includes(format as DocumentFormat)) {
+        return resolve(
+          NextResponse.json({ error: 'Invalid document format' }, { status: 400 })
         );
       }
 
@@ -73,7 +81,7 @@ export async function POST(req: NextRequest) {
         data: {
           title,
           type: type as DocumentType,
-          format,
+          format: format as DocumentFormat,
           summary,
           image: imagePath,
           sourcePath: sourcePath || '',
