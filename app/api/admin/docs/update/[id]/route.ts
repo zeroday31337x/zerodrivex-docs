@@ -4,19 +4,29 @@ import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
 
-export const config = { api: { bodyParser: false } };
+export const runtime = 'nodejs'; // replaces the old config
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const form = new formidable.IncomingForm();
   const uploadDir = path.join(process.cwd(), 'public/images/covers');
-
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
+  // Convert NextRequest to a Node.js compatible request for formidable
+  const buffer = Buffer.from(await req.arrayBuffer());
+  const fakeReq: any = {
+    headers: Object.fromEntries(req.headers.entries()),
+    method: req.method,
+    url: req.url,
+    on: () => {}, // dummy function required by formidable
+  };
+
   return new Promise((resolve, reject) => {
-    form.parse(req as any, async (err, fields, files) => {
+    const form = formidable({ multiples: true, uploadDir, keepExtensions: true });
+
+    // Use `form.parse` on the fake request
+    form.parse({ ...fakeReq, rawBody: buffer } as any, async (err, fields, files) => {
       if (err) return reject(err);
 
-      const id = parseInt(params.id);
+      const id = parseInt(params.id, 10);
       const title = fields.title as string;
       const type = fields.type as string;
       const format = fields.format as string;
