@@ -12,7 +12,7 @@ const FORMAT_MAP: Record<DocumentFormat, DocType> = {
   TEXT:     'txt',
 };
 
-// Added summary to return type
+// Include summary and format in return type
 export async function getDocumentBySlug(slug: string): Promise<{
   title: string;
   published: boolean;
@@ -20,17 +20,18 @@ export async function getDocumentBySlug(slug: string): Promise<{
   fileUrl: string;
   textContent: string;
   category: string;
-  summary?: string; // <-- added summary here
+  summary?: string;
+  format: DocumentFormat; // <-- added format
 }> {
   const doc = await prisma.document.findUnique({
     where: { slug },
     select: {
       title:       true,
       published:   true,
-      format:      true,
+      format:      true,      // select format
       sourcePath:  true,
       contentText: true,
-      summary:     true,   // <-- select summary
+      summary:     true,      // select summary
       categories: {
         select: { category: { select: { name: true } } },
       },
@@ -45,15 +46,15 @@ export async function getDocumentBySlug(slug: string): Promise<{
     title: doc.title,
     published: doc.published,
     type,
+    format: doc.format,           // <-- map format
     fileUrl: doc.sourcePath ?? '',
     textContent: doc.contentText ?? '',
-    summary: doc.summary ?? undefined,  // <-- map summary
+    summary: doc.summary ?? undefined, // <-- map summary
     category:
       doc.categories.map((c) => c.category.name).join(', ') ||
       'Documentation',
   };
 }
-
 export async function getPublishedDocuments() {
   return prisma.document.findMany({
     where: { published: true },
