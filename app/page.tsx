@@ -1,4 +1,4 @@
-'use client';
+'use server';
 
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell';
 import { getPublishedDocuments } from '@/lib/documents';
