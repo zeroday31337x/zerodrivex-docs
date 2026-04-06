@@ -37,7 +37,10 @@ export default function AdminDocsTable({ stats, recentDocs }: Props) {
         </div>
 
         {stats.byType.map((t) => (
-          <div key={t.type} className="rounded-xl border border-white/10 bg-white/5 p-5 text-center">
+          <div
+            key={t.type}
+            className="rounded-xl border border-white/10 bg-white/5 p-5 text-center"
+          >
             <p className="text-3xl font-bold">{t._count._all}</p>
             <p className="text-sm text-white/60 mt-1">{t.type}</p>
           </div>
@@ -88,5 +91,36 @@ export default function AdminDocsTable({ stats, recentDocs }: Props) {
               <th className="pb-2 font-medium text-right">Actions</th>
             </tr>
           </thead>
-
-          <
+          <tbody>
+            {recentDocs.map((doc) => (
+              <tr key={doc.id} className="border-b border-white/10 hover:bg-white/5">
+                <td className="py-2">{doc.title}</td>
+                <td className="py-2">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                      TYPE_COLOR[doc.type] ?? 'bg-white/10 text-white/60'
+                    }`}
+                  >
+                    {doc.type}
+                  </span>
+                </td>
+                <td className="py-2">{doc.format}</td>
+                <td className="py-2">{doc.published ? 'Published' : 'Draft'}</td>
+                <td className="py-2">{new Date(doc.createdAt).toLocaleDateString()}</td>
+                <td className="py-2 text-right flex gap-2 justify-end">
+                  <Link
+                    href={`/admin/docs/edit/${doc.slug}`}
+                    className="px-2 py-1 text-xs font-bold border border-white/20 rounded hover:bg-white/10"
+                  >
+                    Edit
+                  </Link>
+                  <DeleteDocButton docId={doc.id} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
