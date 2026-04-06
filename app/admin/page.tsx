@@ -114,7 +114,7 @@ export default function AdminDocsTable({ stats, recentDocs }: Props) {
                   >
                     Edit
                   </Link>
-                  <DeleteDocButton docId={doc.id} />
+                  <DeleteDocButton id={doc.id} />
                 </td>
               </tr>
             ))}
