@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getDocumentBySlug } from '@/lib/documents'
 
 export default async function DocPage({ params }) {
-  const { slug } = await params
+  const { slug } = params
   const doc = await getDocumentBySlug(slug)
 
   if (!doc) return notFound()
@@ -104,9 +104,28 @@ export default async function DocPage({ params }) {
       `}</style>
 
       <div className="wrapper">
-
         {/* COVER */}
         <div className="cover">
           <div className="cover-label">ZeroDriveX LLC — Dynamic Document</div>
-          <div className="cover-title">
-            {doc.title}
+          <div className="cover-title">{doc.title}</div>
+          {doc.summary && <div className="cover-subtitle">{doc.summary}</div>}
+        </div>
+
+        {/* ABSTRACT */}
+        {doc.textContent && (
+          <div className="abstract">
+            <p>{doc.textContent}</p>
+          </div>
+        )}
+
+        {/* EXTRA SECTIONS IF NEEDED */}
+        <section>
+          <h2>Document Details</h2>
+          <p>Type: {doc.type}</p>
+          <p>Format: {doc.type}</p>
+          <p>Published: {doc.published ? 'Yes' : 'No'}</p>
+        </section>
+      </div>
+    </div>
+  )
+}
