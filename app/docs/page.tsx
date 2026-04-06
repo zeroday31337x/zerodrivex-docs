@@ -1,11 +1,12 @@
-// app/docs/page.tsx
+'use server'
+
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell'
 import { getPublishedDocuments } from '@/lib/documents'
 
-// Force ISR instead of full dynamic rendering for performance
-export const revalidate = 60 // revalidate every 60 seconds
+// Force ISR instead of full dynamic rendering
+export const revalidate = 60
 
-// Color mapping for document types
+// Document type colors
 const TYPE_COLOR: Record<string, string> = {
   RESEARCH: 'bg-blue-500/20 text-blue-300',
   WHITEPAPER: 'bg-purple-500/20 text-purple-300',
@@ -23,7 +24,7 @@ const FORMAT_LABEL: Record<string, string> = {
   TEXT: 'TXT',
 }
 
-// Config for sections
+// Sections config
 const SECTION_CONFIG = [
   { type: 'PRODUCT', title: 'Product Documentation' },
   { type: 'RESEARCH', title: 'Research Papers' },
@@ -31,7 +32,7 @@ const SECTION_CONFIG = [
   { type: 'INTERNAL', title: 'Internal Policies' },
 ]
 
-// Type definitions
+// Document type
 type Doc = {
   id: string
   title: string
@@ -44,15 +45,13 @@ type Doc = {
   createdAt: string
 }
 
-// Helper: safely resolve image URL
+// Helpers
 function resolveImage(src?: string) {
   if (!src) return null
-  if (src.startsWith('http')) return src
-  if (src.startsWith('/')) return src
+  if (src.startsWith('http') || src.startsWith('/')) return src
   return `/images/covers/${src}`
 }
 
-// Helper: group documents by type
 function groupByType(docs: Doc[]) {
   return docs.reduce((acc, doc) => {
     if (!acc[doc.type]) acc[doc.type] = []
@@ -61,7 +60,7 @@ function groupByType(docs: Doc[]) {
   }, {} as Record<string, Doc[]>)
 }
 
-// Component: single document card
+// Components
 function DocCard({ doc }: { doc: Doc }) {
   const imgSrc = resolveImage(doc.image)
   const isExternal = doc.sourcePath.startsWith('http')
@@ -127,7 +126,6 @@ function DocCard({ doc }: { doc: Doc }) {
   )
 }
 
-// Component: section of documents
 function Section({ title, docs }: { title: string; docs: Doc[] }) {
   if (!docs.length) return null
 
@@ -162,42 +160,35 @@ export default async function HomePage() {
           'Research papers, whitepapers, product documentation, and technical specifications',
       }}
     >
+      {/* Intro */}
       <div className="mb-12 p-8 rounded-xl border border-white/10 bg-white/5 text-center max-w-3xl mx-auto">
         <h2 className="text-xl font-bold text-yellow-400 mb-3">
           ZeroDriveX Research Library
         </h2>
         <p className="text-white/70 text-sm leading-relaxed">
-          This documentation portal contains research papers, technical specifications,
-          and architecture documentation for the ZeroDriveX AI ecosystem including
-          ZDX AI, ZDX Mobile AI, and ZDX Guard.
+          Documentation portal for research papers, technical specifications, and
+          architecture docs for ZeroDriveX AI ecosystem including ZDX AI, ZDX Mobile AI, and ZDX Guard.
         </p>
         <div className="w-24 h-px bg-yellow-500/30 mx-auto mt-6"></div>
       </div>
 
+      {/* Quick links */}
       <div className="grid md:grid-cols-3 gap-4 mb-12">
-        <a
-          href="https://www.zerodrivex.com"
-          className="p-4 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition"
-        >
+        <a href="https://www.zerodrivex.com" className="p-4 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition">
           <h3 className="font-semibold text-green-400">ZeroDriveX Platform</h3>
           <p className="text-xs text-white/60">Core AI infrastructure and research</p>
         </a>
-        <a
-          href="https://zdxai.solutions"
-          className="p-4 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition"
-        >
+        <a href="https://zdxai.solutions" className="p-4 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition">
           <h3 className="font-semibold text-blue-400">ZDX AI</h3>
           <p className="text-xs text-white/60">Agent runtime and orchestration</p>
         </a>
-        <a
-          href="https://auth.zerodrivex.com"
-          className="p-4 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition"
-        >
+        <a href="https://auth.zerodrivex.com" className="p-4 border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition">
           <h3 className="font-semibold text-purple-400">ZDX Auth</h3>
           <p className="text-xs text-white/60">Multi-tenant authentication infrastructure</p>
         </a>
       </div>
 
+      {/* Sections */}
       {SECTION_CONFIG.map(({ type, title }) => (
         <Section key={type} title={title} docs={groupedDocs[type] ?? []} />
       ))}
