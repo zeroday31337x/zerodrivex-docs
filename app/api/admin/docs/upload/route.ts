@@ -4,14 +4,24 @@ import fs from 'fs';
 import path from 'path';
 import formidable from 'formidable';
 
+// Node runtime
 export const runtime = 'nodejs';
 
-// Allowed enum values for Prisma DocumentType and DocumentFormat
+// Allowed enums
 const ALLOWED_TYPES = ['RESEARCH', 'WHITEPAPER', 'PRODUCT', 'BLOG', 'INTERNAL'] as const;
 type DocumentType = (typeof ALLOWED_TYPES)[number];
 
 const ALLOWED_FORMATS = ['PDF', 'DOCX', 'MARKDOWN', 'HTML', 'TEXT'] as const;
 type DocumentFormat = (typeof ALLOWED_FORMATS)[number];
+
+// Simple slug generator from title
+function slugify(title: string) {
+  return title
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-]/g, '')
+    .slice(0, 50); // optional max length
+}
 
 export async function POST(req: NextRequest) {
   const uploadDir = path.join(process.cwd(), 'public/images/covers');
@@ -36,19 +46,18 @@ export async function POST(req: NextRequest) {
       const format = fields.format as string;
       const summary = fields.summary as string;
 
-      // Validate required fields
       if (!title || !type || !format) {
         return resolve(
           NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         );
       }
 
-      // Validate enum values
       if (!ALLOWED_TYPES.includes(type as DocumentType)) {
         return resolve(
           NextResponse.json({ error: 'Invalid document type' }, { status: 400 })
         );
       }
+
       if (!ALLOWED_FORMATS.includes(format as DocumentFormat)) {
         return resolve(
           NextResponse.json({ error: 'Invalid document format' }, { status: 400 })
@@ -76,10 +85,20 @@ export async function POST(req: NextRequest) {
         sourcePath = `/documents/${fileName}`;
       }
 
-      // Create document in Prisma
+      // Generate unique slug
+      let slug = slugify(title);
+      let counter = 1;
+      while (
+        await prisma.document.findUnique({ where: { slug } })
+      ) {
+        slug = slugify(title) + `-${counter++}`;
+      }
+
+      // Create document
       const doc = await prisma.document.create({
         data: {
           title,
+          slug,
           type: type as DocumentType,
           format: format as DocumentFormat,
           summary,
