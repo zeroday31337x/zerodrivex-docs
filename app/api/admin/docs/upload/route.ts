@@ -6,21 +6,21 @@ import formidable from 'formidable';
 
 export const runtime = 'nodejs';
 
+// Allowed enum values for Prisma DocumentType
+const ALLOWED_TYPES = ['RESEARCH', 'WHITEPAPER', 'PRODUCT', 'BLOG', 'INTERNAL'] as const;
+type DocumentType = (typeof ALLOWED_TYPES)[number];
+
 export async function POST(req: NextRequest) {
   const uploadDir = path.join(process.cwd(), 'public/images/covers');
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  // Convert request to buffer (REQUIRED for formidable in App Router)
+  // Convert NextRequest to Node.js compatible request for formidable
   const buffer = Buffer.from(await req.arrayBuffer());
-
   const fakeReq: any = {
     headers: Object.fromEntries(req.headers.entries()),
     method: req.method,
     url: req.url,
-    on: () => {},
+    on: () => {}, // dummy function required by formidable
   };
 
   return new Promise<Response>((resolve, reject) => {
@@ -29,11 +29,25 @@ export async function POST(req: NextRequest) {
     form.parse({ ...fakeReq, rawBody: buffer } as any, async (err, fields, files) => {
       if (err) return reject(err);
 
+      // Extract and validate fields
       const title = fields.title as string;
       const type = fields.type as string;
       const format = fields.format as string;
       const summary = fields.summary as string;
 
+      if (!title || !type || !format) {
+        return resolve(
+          NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+        );
+      }
+
+      if (!ALLOWED_TYPES.includes(type as DocumentType)) {
+        return resolve(
+          NextResponse.json({ error: 'Invalid document type' }, { status: 400 })
+        );
+      }
+
+      // Handle image
       let imagePath: string | null = null;
       if (files.image) {
         const file = Array.isArray(files.image) ? files.image[0] : files.image;
@@ -43,24 +57,22 @@ export async function POST(req: NextRequest) {
         imagePath = `/images/covers/${fileName}`;
       }
 
+      // Handle document file
       let sourcePath: string | null = null;
       if (files.file) {
         const file = Array.isArray(files.file) ? files.file[0] : files.file;
         const fileName = `${Date.now()}_${file.originalFilename}`;
         const dest = path.join(process.cwd(), 'public/documents', fileName);
-
-        if (!fs.existsSync(path.dirname(dest))) {
-          fs.mkdirSync(path.dirname(dest), { recursive: true });
-        }
-
+        if (!fs.existsSync(path.dirname(dest))) fs.mkdirSync(path.dirname(dest), { recursive: true });
         fs.renameSync(file.filepath, dest);
         sourcePath = `/documents/${fileName}`;
       }
 
+      // Create document in Prisma
       const doc = await prisma.document.create({
         data: {
           title,
-          type,
+          type: type as DocumentType,
           format,
           summary,
           image: imagePath,
