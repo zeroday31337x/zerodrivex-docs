@@ -2,7 +2,7 @@
 import './globals.css';
 import type { ReactNode } from 'react';
 import Script from 'next/script';
-import DocsSidebar from './DocsSidebar';
+
 
 interface LayoutProps {
   children: ReactNode;
