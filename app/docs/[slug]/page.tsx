@@ -2,8 +2,8 @@ import { getDocumentBySlug } from '@/lib/documents'
 import { convertToHtml } from '@/lib/extract/convertToHtml'
 import UniversalHtmlViewer from '@/components/documents/UniversalHtmlViewer'
 
-export default async function DocPage({ params }: { params: { slug: string } }) {
-  const { slug } = params
+export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   let doc: any = null
   let error: string | null = null
 
@@ -18,7 +18,7 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
   const safeDoc = {
     title: doc?.title || 'Untitled Document',
     summary: doc?.summary || '',
-    textContent: doc?.contentText || '',
+    textContent: doc?.textContent || '',
     createdAt: doc?.createdAt ? new Date(doc.createdAt) : new Date(),
     type: doc?.type || 'INTERNAL',
     format: doc?.format || 'TEXT',

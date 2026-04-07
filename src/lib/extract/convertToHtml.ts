@@ -20,13 +20,19 @@ export async function convertToHtml(doc: {
       return `<div class="doc-content">${mdHtml.toString()}</div>`
 
     case 'DOCX': {
-      const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
+      const filePath = doc.sourcePath.startsWith('/')
+        ? path.join(process.cwd(), 'public', doc.sourcePath)
+        : path.resolve(process.cwd(), doc.sourcePath)
+      const fileBuffer = fs.readFileSync(filePath)
       const result = await mammoth.convertToHtml({ buffer: fileBuffer })
       return `<div class="doc-content">${result.value}</div>`
     }
 
     case 'PDF': {
-  const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
+  const pdfFilePath = doc.sourcePath.startsWith('/')
+    ? path.join(process.cwd(), 'public', doc.sourcePath)
+    : path.resolve(process.cwd(), doc.sourcePath)
+  const fileBuffer = fs.readFileSync(pdfFilePath)
 
   // pdf-parse ships CJS; require() is more reliable than dynamic import
   const { createRequire } = await import('module')
