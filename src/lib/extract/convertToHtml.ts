@@ -1,4 +1,3 @@
-// src/lib/extract/convertToHtml.ts
 import { DocumentFormat } from '@prisma/client'
 import fs from 'fs'
 import path from 'path'
@@ -10,10 +9,10 @@ export async function convertToHtml(doc: {
   format: DocumentFormat
   sourcePath: string
   contentText?: string
-}): Promise<string> {
+}) {
   switch (doc.format) {
     case 'HTML':
-      return `<div class="doc-content">${doc.contentText || ''}</div>`
+      return doc.contentText || ''
 
     case 'MARKDOWN':
       if (!doc.contentText) return ''
@@ -28,15 +27,16 @@ export async function convertToHtml(doc: {
 
     case 'PDF': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
-      // Dynamic import to fix ESM issues in Next.js
+
+      // Dynamic import to handle ESM properly
       const pdfParseModule = await import('pdf-parse')
-      const pdfData = await pdfParseModule.pdfParse(fileBuffer)
+      const pdfParseFn = pdfParseModule.default || pdfParseModule
+      const pdfData = await pdfParseFn(fileBuffer)
 
       const paragraphs = pdfData.text
-        .split(/\r?\n\r?\n/) // split by double newlines
+        .split(/\r?\n\r?\n/) // double newlines as paragraph breaks
         .map((p) => `<p>${p.trim()}</p>`)
         .join('')
-
       return `<div class="doc-content">${paragraphs}</div>`
     }
 
