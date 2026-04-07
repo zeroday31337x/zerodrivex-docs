@@ -7,12 +7,25 @@ import pdfParse from 'pdf-parse'
 import { remark } from 'remark'
 import html from 'remark-html'
 
-// Utility to escape HTML
+// Escape HTML special chars
 function escapeHtml(text: string) {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+}
+
+// Heuristic function for PDF lines → headings or paragraphs
+function pdfLineToHtml(line: string): string {
+  line = line.trim()
+  if (!line) return ''
+
+  // ALL CAPS → h2 heading
+  if (line.match(/^[A-Z0-9 \-]{3,}$/)) return `<h2>${escapeHtml(line)}</h2>`
+  // Short line → h3 subheading
+  if (line.length <= 60) return `<h3>${escapeHtml(line)}</h3>`
+  // Everything else → paragraph
+  return `<p>${escapeHtml(line)}</p>`
 }
 
 export async function convertToHtml(doc: {
@@ -22,10 +35,10 @@ export async function convertToHtml(doc: {
 }) {
   switch (doc.format) {
     case 'HTML':
-      return doc.contentText || ''
+      return `<div class="abstract">${doc.contentText || ''}</div>`
 
     case 'MARKDOWN':
-      if (!doc.contentText) return ''
+      if (!doc.contentText) return '<div class="abstract"></div>'
       const mdHtml = await remark().use(html).process(doc.contentText)
       return `<div class="abstract">${mdHtml.toString()}</div>`
 
@@ -39,25 +52,7 @@ export async function convertToHtml(doc: {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
       const pdfData = await pdfParse(fileBuffer)
       const lines = pdfData.text.split('\n').filter(Boolean)
-
-      let htmlContent = ''
-
-      for (let line of lines) {
-        line = line.trim()
-        if (!line) continue
-
-        // Heuristic: ALL CAPS → heading
-        if (line.match(/^[A-Z0-9 \-]{3,}$/)) {
-          htmlContent += `<h2>${escapeHtml(line)}</h2>`
-        } else if (line.length > 100) {
-          htmlContent += `<p>${escapeHtml(line)}</p>`
-        } else {
-          // Short lines → could be subheading
-          htmlContent += `<h3>${escapeHtml(line)}</h3>`
-        }
-      }
-
-      // Wrap in VM-style abstract container
+      const htmlContent = lines.map(pdfLineToHtml).join('\n')
       return `<div class="abstract">${htmlContent}</div>`
     }
 
