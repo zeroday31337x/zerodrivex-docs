@@ -7,6 +7,14 @@ import pdfParse from 'pdf-parse'
 import { remark } from 'remark'
 import html from 'remark-html'
 
+// Utility to escape HTML
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 export async function convertToHtml(doc: {
   format: DocumentFormat
   sourcePath: string
@@ -19,19 +27,12 @@ export async function convertToHtml(doc: {
     case 'MARKDOWN':
       if (!doc.contentText) return ''
       const mdHtml = await remark().use(html).process(doc.contentText)
-      return mdHtml.toString()
+      return `<div class="abstract">${mdHtml.toString()}</div>`
 
     case 'DOCX': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
-
-      // Extract headings and paragraphs using mammoth's structured output
       const result = await mammoth.convertToHtml({ buffer: fileBuffer })
-      let htmlContent = result.value // Already HTML, includes <p>, <strong>, <em>, <h1>-<h6>
-      
-      // Optional: wrap in VM-style container
-      htmlContent = `<div class="abstract">${htmlContent}</div>`
-
-      return htmlContent
+      return `<div class="abstract">${result.value}</div>`
     }
 
     case 'PDF': {
@@ -39,28 +40,29 @@ export async function convertToHtml(doc: {
       const pdfData = await pdfParse(fileBuffer)
       const lines = pdfData.text.split('\n').filter(Boolean)
 
-      // Convert lines into paragraphs and simple headings
       let htmlContent = ''
+
       for (let line of lines) {
         line = line.trim()
         if (!line) continue
-        if (line.match(/^[A-Z ]{3,}$/)) {
-          // Simple heuristic: ALL CAPS lines → <h2>
-          htmlContent += `<h2>${line}</h2>`
-        } else if (line.length > 80) {
-          htmlContent += `<p>${line}</p>`
+
+        // Heuristic: ALL CAPS → heading
+        if (line.match(/^[A-Z0-9 \-]{3,}$/)) {
+          htmlContent += `<h2>${escapeHtml(line)}</h2>`
+        } else if (line.length > 100) {
+          htmlContent += `<p>${escapeHtml(line)}</p>`
         } else {
-          htmlContent += `<p>${line}</p>`
+          // Short lines → could be subheading
+          htmlContent += `<h3>${escapeHtml(line)}</h3>`
         }
       }
 
       // Wrap in VM-style abstract container
-      htmlContent = `<div class="abstract">${htmlContent}</div>`
-      return htmlContent
+      return `<div class="abstract">${htmlContent}</div>`
     }
 
     case 'TEXT':
     default:
-      return `<div class="abstract"><pre>${doc.contentText || ''}</pre></div>`
+      return `<div class="abstract"><pre>${escapeHtml(doc.contentText || '')}</pre></div>`
   }
 }
