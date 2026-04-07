@@ -26,19 +26,21 @@ export async function convertToHtml(doc: {
     }
 
     case 'PDF': {
-      const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
+  const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
 
-      // Dynamic import to handle ESM properly
-      const pdfParseModule = await import('pdf-parse')
-      const pdfParseFn = pdfParseModule.default || pdfParseModule
-      const pdfData = await pdfParseFn(fileBuffer)
+  // pdf-parse ships CJS; require() is more reliable than dynamic import
+  const { createRequire } = await import('module')
+  const require = createRequire(import.meta.url)
+  const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
 
-      const paragraphs = pdfData.text
-        .split(/\r?\n\r?\n/) // double newlines as paragraph breaks
-        .map((p) => `<p>${p.trim()}</p>`)
-        .join('')
-      return `<div class="doc-content">${paragraphs}</div>`
-    }
+  const pdfData = await pdfParse(fileBuffer)
+
+  const paragraphs = pdfData.text
+    .split(/\r?\n\r?\n/)
+    .map((p) => `<p>${p.trim()}</p>`)
+    .join('')
+  return `<div class="doc-content">${paragraphs}</div>`
+}
 
     case 'TEXT':
     default:
