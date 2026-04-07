@@ -8,6 +8,19 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
 
   if (!doc) return notFound()
 
+  // Safe fallback values to prevent server errors
+  const safeDoc = {
+    ...doc,
+    title: doc.title || 'Untitled Document',
+    summary: doc.summary || '',
+    textContent: doc.textContent || '',
+    createdAt: doc.createdAt ? new Date(doc.createdAt) : new Date(),
+    type: doc.type || 'INTERNAL',
+    format: doc.format || 'TEXT',
+    category: doc.category || 'Uncategorized',
+    published: doc.published ?? false,
+  }
+
   return (
     <div className="zdx-root">
       <style>{`
@@ -36,33 +49,23 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
         {/* COVER */}
         <div className="cover">
           <div className="cover-label">ZeroDriveX LLC — Dynamic Document</div>
-          <div className="cover-title">{doc.title}</div>
-          {/* Only render summary if it exists */}
-          {doc.summary ? (
-            <div className="cover-subtitle">{doc.summary}</div>
-          ) : null}
+          <div className="cover-title">{safeDoc.title}</div>
+          {safeDoc.summary && (
+            <div className="cover-subtitle">{safeDoc.summary}</div>
+          )}
         </div>
 
         {/* ABSTRACT */}
-        {doc.textContent && (
+        {safeDoc.textContent && (
           <div className="abstract">
-            {doc.format === 'HTML' ? (
-              <div dangerouslySetInnerHTML={{ __html: doc.textContent }} />
+            {safeDoc.format === 'HTML' ? (
+              <div dangerouslySetInnerHTML={{ __html: safeDoc.textContent }} />
             ) : (
-              <pre>{doc.textContent}</pre>
+              <pre>{safeDoc.textContent}</pre>
             )}
           </div>
         )}
 
         {/* EXTRA SECTIONS */}
         <section>
-          <h2>Document Details</h2>
-          <p>Type: {doc.type}</p>
-          <p>Format: {doc.format}</p>
-          <p>Published: {doc.published ? 'Yes' : 'No'}</p>
-          <p>Category: {doc.category}</p>
-        </section>
-      </div>
-    </div>
-  )
-}
+          <h2>
