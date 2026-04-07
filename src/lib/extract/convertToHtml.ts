@@ -1,4 +1,3 @@
-// src/lib/extract/convertToHtml.ts
 import { DocumentFormat } from '@prisma/client'
 import fs from 'fs'
 import path from 'path'
@@ -7,27 +6,6 @@ import pdfParse from 'pdf-parse'
 import { remark } from 'remark'
 import html from 'remark-html'
 
-// Escape HTML special chars
-function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-}
-
-// Heuristic function for PDF lines → headings or paragraphs
-function pdfLineToHtml(line: string): string {
-  line = line.trim()
-  if (!line) return ''
-
-  // ALL CAPS → h2 heading
-  if (line.match(/^[A-Z0-9 \-]{3,}$/)) return `<h2>${escapeHtml(line)}</h2>`
-  // Short line → h3 subheading
-  if (line.length <= 60) return `<h3>${escapeHtml(line)}</h3>`
-  // Everything else → paragraph
-  return `<p>${escapeHtml(line)}</p>`
-}
-
 export async function convertToHtml(doc: {
   format: DocumentFormat
   sourcePath: string
@@ -35,29 +13,43 @@ export async function convertToHtml(doc: {
 }) {
   switch (doc.format) {
     case 'HTML':
-      return `<div class="abstract">${doc.contentText || ''}</div>`
+      return doc.contentText || ''
 
     case 'MARKDOWN':
-      if (!doc.contentText) return '<div class="abstract"></div>'
+      if (!doc.contentText) return ''
       const mdHtml = await remark().use(html).process(doc.contentText)
-      return `<div class="abstract">${mdHtml.toString()}</div>`
+      return mdHtml.toString()
 
     case 'DOCX': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
+      // Use mammoth to preserve headings, bold, lists
       const result = await mammoth.convertToHtml({ buffer: fileBuffer })
-      return `<div class="abstract">${result.value}</div>`
+      // Wrap in container to match VM abstract section
+      return `<div class="doc-content">${result.value}</div>`
     }
 
     case 'PDF': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
       const pdfData = await pdfParse(fileBuffer)
-      const lines = pdfData.text.split('\n').filter(Boolean)
-      const htmlContent = lines.map(pdfLineToHtml).join('\n')
-      return `<div class="abstract">${htmlContent}</div>`
+
+      // Convert lines to paragraphs
+      const paragraphs = pdfData.text
+        .split(/\r?\n\r?\n/) // split by double newlines
+        .map((p) => `<p>${p.trim()}</p>`)
+        .join('')
+
+      return `<div class="doc-content">${paragraphs}</div>`
     }
 
     case 'TEXT':
     default:
-      return `<div class="abstract"><pre>${escapeHtml(doc.contentText || '')}</pre></div>`
+      // Plain text wrapped in paragraphs
+      const lines = (doc.contentText || '')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => `<p>${line}</p>`)
+        .join('')
+      return `<div class="doc-content">${lines}</div>`
   }
 }
