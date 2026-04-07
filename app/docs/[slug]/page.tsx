@@ -1,5 +1,7 @@
+// app/docs/[slug]/page.tsx
 import { getDocumentBySlug } from '@/lib/documents'
 import UniversalHtmlViewer from '@/components/documents/UniversalHtmlViewer'
+import { convertToHtml } from '@/lib/extract/convertToHtml'
 
 export default async function DocPage({ params }: { params: { slug: string } }) {
   const { slug } = params
@@ -23,45 +25,66 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
     format: doc?.format || 'TEXT',
     category: doc?.category || 'Uncategorized',
     published: doc?.published ?? false,
-    sourcePath: doc?.fileUrl || '',
+    sourcePath: doc?.fileUrl || doc?.sourcePath || '',
   }
 
-  // Convert any non-HTML document into HTML using simple <pre> wrapper
-  const htmlContent =
-    safeDoc.format === 'HTML'
-      ? safeDoc.textContent
-      : `<pre>${safeDoc.textContent}</pre>`
+  // Convert any document to VM-style HTML
+  const htmlContent = await convertToHtml({
+    format: safeDoc.format,
+    sourcePath: safeDoc.sourcePath,
+    contentText: safeDoc.textContent,
+  })
 
   return (
-    <div>
-      {error ? (
-        <div style={{ color: '#ff6b6b', textAlign: 'center', padding: 40 }}>
-          {error} <br /> Please try again later.
-        </div>
-      ) : (
-        <>
-          <div style={{ marginBottom: 40 }}>
-            <h1>{safeDoc.title}</h1>
-            {safeDoc.summary && <p>{safeDoc.summary}</p>}
+    <div className="zdx-root">
+      <style>{`
+        :root { --bg:#080c10; --surface:#0d1318; --border:#1a2530; --accent:#00e5ff; --accent2:#7fff00; --accent3:#ff6b35; --text:#c8d8e0; --text-dim:#5a7a8a; }
+        body { margin:0 }
+        .zdx-root { background: var(--bg); color: var(--text); min-height:100vh; font-family: 'Barlow', sans-serif; position:relative; }
+        .wrapper { max-width:860px; margin:0 auto; padding:80px 40px 120px; position:relative; z-index:2; }
+        .cover { border-bottom:1px solid var(--border); padding-bottom:60px; margin-bottom:72px; }
+        .cover-label { font-family: monospace; font-size:11px; letter-spacing:.25em; color:var(--accent); margin-bottom:32px; }
+        .cover-title { font-family: monospace; font-size: clamp(28px,5vw,48px); color:#fff; margin-bottom:8px; }
+        .cover-subtitle { font-size:18px; color:var(--text-dim); margin-bottom:40px; }
+        .abstract { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); padding:28px 32px; margin-bottom:72px; }
+        .download-btn { display:inline-block; margin-top:24px; padding:12px 20px; background:#00e5ff; color:#080c10; font-weight:bold; border-radius:8px; text-decoration:none; transition:0.2s; }
+        .download-btn:hover { background:#00c4cc; }
+        .error { color:#ff6b6b; font-weight:bold; text-align:center; padding:40px; border:1px solid #ff6b6b; border-radius:12px; background:rgba(255,107,107,0.05); margin-bottom:72px; }
+        section { margin-bottom:72px }
+      `}</style>
+
+      <div className="wrapper">
+        {error ? (
+          <div className="error">
+            {error} <br /> Please try again later.
           </div>
+        ) : (
+          <>
+            <div className="cover">
+              <div className="cover-label">ZeroDriveX LLC — Dynamic Document</div>
+              <div className="cover-title">{safeDoc.title}</div>
+              {safeDoc.summary && <div className="cover-subtitle">{safeDoc.summary}</div>}
+            </div>
 
-          <UniversalHtmlViewer content={htmlContent} />
+            {htmlContent && <UniversalHtmlViewer content={htmlContent} />}
 
-          {safeDoc.sourcePath && (
-            <a href={safeDoc.sourcePath} download className="download-btn">
-              Download Original File
-            </a>
-          )}
+            {safeDoc.sourcePath && (
+              <a href={safeDoc.sourcePath} download className="download-btn">
+                Download Original File
+              </a>
+            )}
 
-          <section>
-            <h2>Document Details</h2>
-            <p>Type: {safeDoc.type}</p>
-            <p>Format: {safeDoc.format}</p>
-            <p>Published: {safeDoc.published ? 'Yes' : 'No'}</p>
-            <p>Category: {safeDoc.category}</p>
-          </section>
-        </>
-      )}
+            <section>
+              <h2>Document Details</h2>
+              <p>Type: {safeDoc.type}</p>
+              <p>Format: {safeDoc.format}</p>
+              <p>Published: {safeDoc.published ? 'Yes' : 'No'}</p>
+              <p>Category: {safeDoc.category}</p>
+              <p>Created: {safeDoc.createdAt.toLocaleDateString()}</p>
+            </section>
+          </>
+        )}
+      </div>
     </div>
   )
 }
