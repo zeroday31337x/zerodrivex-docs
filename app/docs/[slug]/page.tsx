@@ -27,7 +27,7 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
     sourcePath: doc?.fileUrl || '',
   }
 
-  // Convert all docs to VM-style HTML
+  // Convert any doc to HTML for consistent VM-style display
   const htmlContent = await convertToHtml({
     format: safeDoc.format,
     sourcePath: safeDoc.sourcePath,
@@ -43,12 +43,12 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
           --border: #1a2530;
           --accent: #00e5ff;
           --accent2: #7fff00;
+          --accent3: #ff6b35;
           --text: #c8d8e0;
           --text-dim: #5a7a8a;
         }
 
         body { margin:0; font-family: 'Barlow', sans-serif; }
-
         .zdx-root { background: var(--bg); color: var(--text); min-height: 100vh; }
         .wrapper { max-width: 860px; margin: 0 auto; padding: 80px 40px 120px; }
 
@@ -64,6 +64,7 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
           padding:28px 32px;
           margin-bottom:72px;
           line-height:1.65;
+          white-space: pre-wrap;
         }
 
         .abstract h1, h2, h3, h4, h5, h6 { font-family: monospace; color:#fff; margin-top:32px; margin-bottom:16px; }
@@ -141,7 +142,6 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
               <p>Category: {safeDoc.category}</p>
             </section>
 
-            {/* Signature / Footer */}
             <div className="signature">
               &copy; {new Date().getFullYear()} ZeroDriveX LLC —{' '}
               <a href="https://www.zerodrivex.com" target="_blank" rel="noopener noreferrer">
