@@ -13,9 +13,14 @@ type Doc = {
   createdAt: string;
 };
 
+type Stats = {
+  total: number;
+  byType: { type: string; _count: { _all: number } }[];
+};
+
 type Props = {
-  stats: { total: number; byType: { type: string; _count: { _all: number } }[] };
-  recentDocs: Doc[];
+  stats?: Stats;
+  recentDocs?: Doc[];
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -27,16 +32,19 @@ const TYPE_COLOR: Record<string, string> = {
 };
 
 export default function AdminDocsTable({ stats, recentDocs }: Props) {
+  const safeStats: Stats = stats ?? { total: 0, byType: [] };
+  const safeDocs: Doc[] = recentDocs ?? [];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Stats */}
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-center">
-          <p className="text-4xl font-bold text-green-400">{stats.total}</p>
+          <p className="text-4xl font-bold text-green-400">{safeStats.total}</p>
           <p className="text-sm text-white/60 mt-1">Total Documents</p>
         </div>
 
-        {stats.byType.map((t) => (
+        {safeStats.byType.map((t) => (
           <div
             key={t.type}
             className="rounded-xl border border-white/10 bg-white/5 p-5 text-center"
@@ -91,10 +99,15 @@ export default function AdminDocsTable({ stats, recentDocs }: Props) {
               <th className="pb-2 font-medium text-right">Actions</th>
             </tr>
           </thead>
+
           <tbody>
-            {recentDocs.map((doc) => (
-              <tr key={doc.id} className="border-b border-white/10 hover:bg-white/5">
+            {safeDocs.map((doc) => (
+              <tr
+                key={doc.id}
+                className="border-b border-white/10 hover:bg-white/5"
+              >
                 <td className="py-2">{doc.title}</td>
+
                 <td className="py-2">
                   <span
                     className={`text-xs px-2 py-0.5 rounded font-semibold ${
@@ -104,9 +117,17 @@ export default function AdminDocsTable({ stats, recentDocs }: Props) {
                     {doc.type}
                   </span>
                 </td>
+
                 <td className="py-2">{doc.format}</td>
-                <td className="py-2">{doc.published ? 'Published' : 'Draft'}</td>
-                <td className="py-2">{new Date(doc.createdAt).toLocaleDateString()}</td>
+
+                <td className="py-2">
+                  {doc.published ? 'Published' : 'Draft'}
+                </td>
+
+                <td className="py-2">
+                  {new Date(doc.createdAt).toLocaleDateString()}
+                </td>
+
                 <td className="py-2 text-right flex gap-2 justify-end">
                   <Link
                     href={`/admin/docs/edit/${doc.slug}`}
@@ -114,6 +135,7 @@ export default function AdminDocsTable({ stats, recentDocs }: Props) {
                   >
                     Edit
                   </Link>
+
                   <DeleteDocButton id={doc.id} />
                 </td>
               </tr>
@@ -124,3 +146,5 @@ export default function AdminDocsTable({ stats, recentDocs }: Props) {
     </div>
   );
 }
+
+
