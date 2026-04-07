@@ -2,7 +2,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ExtraProps } from 'react-markdown';
+import type { Components } from 'react-markdown';
 
 type Props = {
   content?: string;
@@ -40,13 +40,8 @@ export default function MarkdownViewer({ content }: Props) {
             </a>
           ),
 
-          // Correctly typed code component for recent react-markdown versions
-          code: ({
-            inline,
-            className,
-            children,
-            ...props
-          }: React.ComponentProps<'code'> & ExtraProps) => {
+          // Correct typing using Components['code'] (recommended for react-markdown v9+)
+          code: ({ node, inline, className, children, ...props }: Components['code']) => {
             const content = String(children).replace(/\n$/, '');
 
             return inline ? (
