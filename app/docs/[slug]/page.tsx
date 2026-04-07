@@ -1,6 +1,6 @@
 import { getDocumentBySlug } from '@/lib/documents'
 import { convertToHtml } from '@/lib/extract/convertToHtml'
-import UniversalHtmlViewer from '@/lib/documents/UniversalHtmlViewer'
+import UniversalHtmlViewer from '@/lib/extract/UniversalHtmlViewer'
 
 export default async function DocPage({ params }: { params: { slug: string } }) {
   const { slug } = params
