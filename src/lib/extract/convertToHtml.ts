@@ -10,10 +10,10 @@ export async function convertToHtml(doc: {
   format: DocumentFormat
   sourcePath: string
   contentText?: string
-}) {
+}): Promise<string> {
   switch (doc.format) {
     case 'HTML':
-      return doc.contentText || ''
+      return `<div class="doc-content">${doc.contentText || ''}</div>`
 
     case 'MARKDOWN':
       if (!doc.contentText) return ''
@@ -28,12 +28,10 @@ export async function convertToHtml(doc: {
 
     case 'PDF': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
-      // Dynamic import fixes ESM default export issues in Next.js
+      // Dynamic import to fix ESM issues in Next.js
       const pdfParseModule = await import('pdf-parse')
-      const pdfParseFn = pdfParseModule.default || pdfParseModule
-      const pdfData = await pdfParseFn(fileBuffer)
+      const pdfData = await pdfParseModule.pdfParse(fileBuffer)
 
-      // Convert PDF text into paragraphs for VM-style HTML
       const paragraphs = pdfData.text
         .split(/\r?\n\r?\n/) // split by double newlines
         .map((p) => `<p>${p.trim()}</p>`)
