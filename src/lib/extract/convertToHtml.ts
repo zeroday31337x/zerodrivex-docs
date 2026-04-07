@@ -23,18 +23,31 @@ export async function convertToHtml(doc: {
 
     case 'DOCX': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
-      const result = await mammoth.extractRawText({ buffer: fileBuffer })
-      return `<pre>${result.value}</pre>`
+      // Convert to **clean semantic HTML**, not raw text
+      const result = await mammoth.convertToHtml({ buffer: fileBuffer })
+      // Wrap in VM-style container
+      return `<div class="vm-doc">${result.value}</div>`
     }
 
     case 'PDF': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
       const pdfData = await pdfParse(fileBuffer)
-      return `<pre>${pdfData.text}</pre>`
+      // Split text into paragraphs for cleaner HTML
+      const paragraphs = pdfData.text
+        .split(/\n{2,}/)
+        .map((p) => `<p>${p.trim()}</p>`)
+        .join('\n')
+      return `<div class="vm-doc">${paragraphs}</div>`
     }
 
     case 'TEXT':
     default:
-      return `<pre>${doc.contentText || ''}</pre>`
+      // Split text lines into paragraphs
+      const text = doc.contentText || ''
+      const lines = text
+        .split(/\n{1,}/)
+        .map((l) => `<p>${l.trim()}</p>`)
+        .join('\n')
+      return `<div class="vm-doc">${lines}</div>`
   }
 }
