@@ -11,8 +11,7 @@ interface LayoutProps {
 export default function DocsLayout({ children }: LayoutProps) {
   return (
     <div className="flex min-h-screen bg-black text-white">
-      {/* Sidebar */}
-      <DocsSidebar />
+      
 
       {/* Main content */}
       <main className="flex-1 mx-auto max-w-5xl px-6 py-12">
