@@ -1,5 +1,3 @@
-
-
 import ZdxDocsShell from '@/components/ui/ZdxDocsShell'
 import { getPublishedDocuments } from '@/lib/documents'
 
@@ -12,7 +10,7 @@ const TYPE_COLOR: Record<string, string> = {
   WHITEPAPER: 'bg-purple-500/20 text-purple-300',
   PRODUCT: 'bg-yellow-500/20 text-yellow-300',
   BLOG: 'bg-green-500/20 text-green-300',
-  INTERNAL: 'bg-gray-500/20 text-gray-300',
+  INTERNAL: 'bg-gray-500/20 text-white/60',
 }
 
 // Format labels
@@ -32,7 +30,7 @@ const SECTION_CONFIG = [
   { type: 'INTERNAL', title: 'Internal Policies' },
 ]
 
-// Document type
+// Document type (fixed to match Prisma output)
 type Doc = {
   id: string
   title: string
@@ -42,7 +40,7 @@ type Doc = {
   summary?: string
   image?: string
   sourcePath: string
-  createdAt: string
+  createdAt: Date | string  // Prisma returns Date, we accept both
 }
 
 // Helpers
@@ -146,11 +144,15 @@ function Section({ title, docs }: { title: string; docs: Doc[] }) {
 
 // Main page
 export default async function HomePage() {
-  const docs = (await getPublishedDocuments()).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )
+  const docs = await getPublishedDocuments()
 
-  const groupedDocs = groupByType(docs)
+  // Type assertion + conversion for safety (handles Prisma Date → string compatibility)
+  const typedDocs: Doc[] = docs.map((doc) => ({
+    ...doc,
+    createdAt: doc.createdAt, // Keep as Date (our type accepts Date | string)
+  }))
+
+  const groupedDocs = groupByType(typedDocs)
 
   return (
     <ZdxDocsShell
