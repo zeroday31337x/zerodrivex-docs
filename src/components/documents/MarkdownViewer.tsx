@@ -40,20 +40,21 @@ export default function MarkdownViewer({ content }: Props) {
             </a>
           ),
 
-          // Correct typing using Components['code'] (recommended for react-markdown v9+)
-          code: ({ node, inline, className, children, ...props }: Components['code']) => {
+          // Properly typed code component (works with react-markdown v9+ / v10+)
+          code(props: Components['code']) {
+            const { inline, className, children, ...rest } = props;
             const content = String(children).replace(/\n$/, '');
 
             return inline ? (
               <code
                 className="bg-black/50 px-1 py-0.5 rounded text-green-400 font-mono"
-                {...props}
+                {...rest}
               >
                 {children}
               </code>
             ) : (
               <pre className="overflow-x-auto p-4 rounded-lg bg-black/60 border border-white/10">
-                <code className={className} {...props}>
+                <code className={className} {...rest}>
                   {content}
                 </code>
               </pre>
