@@ -2,6 +2,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { ExtraProps } from 'react-markdown'; // Import for proper typing
 
 type Props = {
   content?: string;
@@ -27,6 +28,7 @@ export default function MarkdownViewer({ content }: Props) {
               className="w-full max-h-[500px] object-contain rounded-lg border border-white/10"
             />
           ),
+
           a: ({ href = '', children }) => (
             <a
               href={href}
@@ -37,14 +39,23 @@ export default function MarkdownViewer({ content }: Props) {
               {children}
             </a>
           ),
-          code({ inline, children }) {
+
+          // Fixed code component with proper TypeScript typing
+          code({ inline, className, children, ...props }: React.ComponentProps<'code'> & ExtraProps) {
+            const content = String(children).replace(/\n$/, '');
+
             return inline ? (
-              <code className="bg-black/50 px-1 py-0.5 rounded text-green-400">
+              <code
+                className="bg-black/50 px-1 py-0.5 rounded text-green-400 font-mono"
+                {...props}
+              >
                 {children}
               </code>
             ) : (
-              <pre className="overflow-x-auto p-4 rounded-lg">
-                <code>{children}</code>
+              <pre className="overflow-x-auto p-4 rounded-lg bg-black/60 border border-white/10">
+                <code className={className} {...props}>
+                  {content}
+                </code>
               </pre>
             );
           },
