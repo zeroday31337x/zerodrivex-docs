@@ -27,15 +27,14 @@ export async function convertToHtml(doc: {
     }
 
     case 'PDF': {
-      const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
-      const pdfData = await pdfParse.default(fileBuffer)
-      // Convert PDF text into paragraphs for VM-style HTML
-      const paragraphs = pdfData.text
-        .split(/\r?\n\r?\n/) // split by double newlines
-        .map((p) => `<p>${p.trim()}</p>`)
-        .join('')
-      return `<div class="doc-content">${paragraphs}</div>`
-    }
+  const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
+  const pdfData = await pdfParse(fileBuffer) // <-- call directly
+  const paragraphs = pdfData.text
+    .split(/\r?\n\r?\n/) // split by double newlines
+    .map((p) => `<p>${p.trim()}</p>`)
+    .join('')
+  return `<div class="doc-content">${paragraphs}</div>`
+}
 
     case 'TEXT':
     default:
