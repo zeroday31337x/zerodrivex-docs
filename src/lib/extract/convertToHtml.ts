@@ -23,31 +23,44 @@ export async function convertToHtml(doc: {
 
     case 'DOCX': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
-      // Convert to **clean semantic HTML**, not raw text
+
+      // Extract headings and paragraphs using mammoth's structured output
       const result = await mammoth.convertToHtml({ buffer: fileBuffer })
-      // Wrap in VM-style container
-      return `<div class="vm-doc">${result.value}</div>`
+      let htmlContent = result.value // Already HTML, includes <p>, <strong>, <em>, <h1>-<h6>
+      
+      // Optional: wrap in VM-style container
+      htmlContent = `<div class="abstract">${htmlContent}</div>`
+
+      return htmlContent
     }
 
     case 'PDF': {
       const fileBuffer = fs.readFileSync(path.resolve(process.cwd(), doc.sourcePath))
       const pdfData = await pdfParse(fileBuffer)
-      // Split text into paragraphs for cleaner HTML
-      const paragraphs = pdfData.text
-        .split(/\n{2,}/)
-        .map((p) => `<p>${p.trim()}</p>`)
-        .join('\n')
-      return `<div class="vm-doc">${paragraphs}</div>`
+      const lines = pdfData.text.split('\n').filter(Boolean)
+
+      // Convert lines into paragraphs and simple headings
+      let htmlContent = ''
+      for (let line of lines) {
+        line = line.trim()
+        if (!line) continue
+        if (line.match(/^[A-Z ]{3,}$/)) {
+          // Simple heuristic: ALL CAPS lines → <h2>
+          htmlContent += `<h2>${line}</h2>`
+        } else if (line.length > 80) {
+          htmlContent += `<p>${line}</p>`
+        } else {
+          htmlContent += `<p>${line}</p>`
+        }
+      }
+
+      // Wrap in VM-style abstract container
+      htmlContent = `<div class="abstract">${htmlContent}</div>`
+      return htmlContent
     }
 
     case 'TEXT':
     default:
-      // Split text lines into paragraphs
-      const text = doc.contentText || ''
-      const lines = text
-        .split(/\n{1,}/)
-        .map((l) => `<p>${l.trim()}</p>`)
-        .join('\n')
-      return `<div class="vm-doc">${lines}</div>`
+      return `<div class="abstract"><pre>${doc.contentText || ''}</pre></div>`
   }
 }
