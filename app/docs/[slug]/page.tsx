@@ -16,11 +16,11 @@ export default async function DocPage({ params }: { params: { slug: string } }) 
     error = 'Failed to load document due to a server error.'
   }
 
-  // Build a safe document object to avoid undefined fields
+  // Build a safe document object
   const safeDoc = {
     title: doc?.title || 'Untitled Document',
     summary: doc?.summary || '',
-    textContent: doc?.textContent || '',
+    textContent: doc?.contentText || '', // <-- fixed column name
     createdAt: doc?.createdAt ? new Date(doc.createdAt) : new Date(),
     type: doc?.type || 'INTERNAL',
     format: doc?.format || 'TEXT',
