@@ -7,7 +7,16 @@ type Props = {
 };
 
 export default function HtmlViewer({ content }: Props) {
-  const clean = DOMPurify.sanitize(content || '');
+  // Sanitize the HTML to prevent XSS attacks
+  const clean = DOMPurify.sanitize(content || '', {
+    // Optional: Add more secure defaults if needed
+    ALLOWED_TAGS: [
+      'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'u', 's',
+      'ul', 'ol', 'li', 'a', 'blockquote', 'pre', 'code', 'img', 'table',
+      'thead', 'tbody', 'tr', 'th', 'td', 'br', 'hr', 'div', 'span'
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class'],
+  });
 
   return (
     <div className="max-w-none overflow-x-auto">
